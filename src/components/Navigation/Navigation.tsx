@@ -6,7 +6,6 @@ export const Navigation: React.FC = () => {
   return (
     <header className="navigation">
       <Link className="navigation__brand" to="/">
-        <span>YN</span>
         <div>
           <strong>Yacine Nezreg</strong>
           <small>Produit · web · business</small>
