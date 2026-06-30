@@ -16,12 +16,21 @@ interface PathSelectorProps {
   onSelectPath: () => void;
 }
 
+type PathCardStyle = React.CSSProperties & {
+  "--card-image": string;
+};
+
 const iconMap = {
   code: FiCode,
   briefcase: FiBriefcase,
   cart: FiShoppingCart,
   orbit: FiCompass,
 };
+
+const CARD_REVEAL_MS = 620;
+const CARD_TRANSITION_MS = 1120;
+const CARD_REVEAL_END_MS = 1800;
+const SWIPE_MIN_DISTANCE = 24;
 
 const getOffset = (index: number, activeIndex: number) => {
   const length = audiencePaths.length;
@@ -36,10 +45,18 @@ const getOffset = (index: number, activeIndex: number) => {
 export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
   const [reducedMotion, setReducedMotion] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isRevealing, setIsRevealing] = useState(false);
+  const [departingIndex, setDepartingIndex] = useState<number | null>(null);
+  const [transitionDirection, setTransitionDirection] = useState<"next" | "previous">("next");
+  const activeIndexRef = useRef(0);
+  const isTransitioningRef = useRef(false);
   const pauseUntilRef = useRef(0);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
-  const lastSwipeAtRef = useRef(0);
+  const transitionTimerRef = useRef<number>();
+  const revealTimerRef = useRef<number>();
+  const revealEndTimerRef = useRef<number>();
   const activePath = audiencePaths[activeIndex];
 
   useEffect(() => {
@@ -70,11 +87,64 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
 
     const interval = window.setInterval(() => {
       if (Date.now() < pauseUntilRef.current) return;
-      setActiveIndex((current) => (current + 1) % audiencePaths.length);
+      if (isTransitioningRef.current) return;
+
+      setTransitionDirection("next");
+      animateToIndex((current) => (current + 1) % audiencePaths.length);
     }, 5400);
 
     return () => window.clearInterval(interval);
   }, [reducedMotion]);
+
+  useEffect(() => {
+    activeIndexRef.current = activeIndex;
+  }, [activeIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
+      if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
+      if (revealEndTimerRef.current) window.clearTimeout(revealEndTimerRef.current);
+    };
+  }, []);
+
+  const animateToIndex = (nextIndex: number | ((current: number) => number)) => {
+    if (isTransitioningRef.current) return;
+
+    const currentIndex = activeIndexRef.current;
+    const resolvedIndex =
+      typeof nextIndex === "function" ? nextIndex(currentIndex) : nextIndex;
+
+    if (resolvedIndex === currentIndex) return;
+
+    if (!reducedMotion) {
+      isTransitioningRef.current = true;
+      setIsTransitioning(true);
+      setIsRevealing(false);
+      setDepartingIndex(currentIndex);
+
+      if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
+      if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
+      if (revealEndTimerRef.current) window.clearTimeout(revealEndTimerRef.current);
+
+      revealTimerRef.current = window.setTimeout(() => {
+        setIsRevealing(true);
+      }, CARD_REVEAL_MS);
+
+      transitionTimerRef.current = window.setTimeout(() => {
+        setIsTransitioning(false);
+        setDepartingIndex(null);
+        isTransitioningRef.current = false;
+      }, CARD_TRANSITION_MS);
+
+      revealEndTimerRef.current = window.setTimeout(() => {
+        setIsRevealing(false);
+      }, CARD_REVEAL_END_MS);
+    }
+
+    activeIndexRef.current = resolvedIndex;
+    setActiveIndex(resolvedIndex);
+  };
 
   const pauseAutoRotation = () => {
     pauseUntilRef.current = Date.now() + 15000;
@@ -82,54 +152,29 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
 
   const goToPrevious = () => {
     pauseAutoRotation();
-    setActiveIndex((current) =>
+    setTransitionDirection("previous");
+    animateToIndex((current) =>
       current === 0 ? audiencePaths.length - 1 : current - 1
     );
   };
 
   const goToNext = () => {
     pauseAutoRotation();
-    setActiveIndex((current) => (current + 1) % audiencePaths.length);
+    setTransitionDirection("next");
+    animateToIndex((current) => (current + 1) % audiencePaths.length);
   };
 
   const selectCard = (index: number) => {
+    if (index === activeIndex) return;
+
     pauseAutoRotation();
-    setActiveIndex(index);
-  };
-
-  const completeSwipe = (deltaX: number, deltaY: number) => {
-    const isHorizontalSwipe = Math.abs(deltaX) > 44 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25;
-
-    if (!isHorizontalSwipe || Date.now() - lastSwipeAtRef.current < 280) return;
-
-    lastSwipeAtRef.current = Date.now();
-    suppressClickRef.current = true;
-    window.setTimeout(() => {
-      suppressClickRef.current = false;
-    }, 350);
-
-    if (deltaX < 0) goToNext();
-    else goToPrevious();
-  };
-
-  const startSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "mouse") return;
-    pauseAutoRotation();
-    swipeStartRef.current = { x: event.clientX, y: event.clientY };
-  };
-
-  const endSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
-    const start = swipeStartRef.current;
-    swipeStartRef.current = null;
-
-    if (!start || event.pointerType === "mouse") return;
-
-    const deltaX = event.clientX - start.x;
-    const deltaY = event.clientY - start.y;
-    completeSwipe(deltaX, deltaY);
+    setTransitionDirection(getOffset(index, activeIndex) < 0 ? "previous" : "next");
+    animateToIndex(index);
   };
 
   const startTouchSwipe = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (isTransitioningRef.current) return;
+
     const touch = event.touches[0];
     if (!touch) return;
 
@@ -142,9 +187,22 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
     const touch = event.changedTouches[0];
     swipeStartRef.current = null;
 
-    if (!start || !touch) return;
+    if (!start || !touch || isTransitioningRef.current) return;
 
-    completeSwipe(touch.clientX - start.x, touch.clientY - start.y);
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    const isHorizontalSwipe =
+      Math.abs(deltaX) >= SWIPE_MIN_DISTANCE && Math.abs(deltaX) > Math.abs(deltaY) * 0.95;
+
+    if (!isHorizontalSwipe) return;
+
+    suppressClickRef.current = true;
+    window.setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 420);
+
+    if (deltaX < 0) goToNext();
+    else goToPrevious();
   };
 
   return (
@@ -159,16 +217,14 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
       </div>
 
       <div
-        className="path-carousel"
+        className={`path-carousel path-carousel--${transitionDirection} ${isTransitioning ? "is-transitioning" : ""} ${
+          isRevealing ? "is-revealing" : ""
+        }`}
         aria-live="polite"
         onMouseEnter={pauseAutoRotation}
         onTouchStart={startTouchSwipe}
         onTouchEnd={endTouchSwipe}
-        onPointerDown={startSwipe}
-        onPointerUp={endSwipe}
-        onPointerCancel={() => {
-          swipeStartRef.current = null;
-        }}
+        onTouchCancel={endTouchSwipe}
       >
         <button className="path-carousel__control path-carousel__control--left" type="button" onClick={goToPrevious} aria-label="Parcours précédent">
           <FiArrowLeft aria-hidden="true" />
@@ -180,14 +236,18 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
             const offset = getOffset(index, activeIndex);
             const absOffset = Math.abs(offset);
             const isActive = offset === 0;
+            const isDeparting = departingIndex === index && isTransitioning;
+            const zIndex = isActive ? 40 : isDeparting ? 24 : 20 - absOffset;
 
             return (
               <article
-                className={`path-card path-card--${path.accent} path-card--offset-${offset} ${isActive ? "is-active" : ""}`}
+                className={`path-card path-card--${path.accent} path-card--offset-${offset} ${
+                  isActive ? "is-active" : ""
+                } ${isDeparting ? "is-departing" : ""}`}
                 style={{
                   "--card-image": `url(${path.image})`,
-                  zIndex: isActive ? 30 : 20 - absOffset,
-                } as React.CSSProperties}
+                  zIndex,
+                } as PathCardStyle}
                 key={path.id}
                 aria-hidden={!isActive}
                 onClick={() => {
@@ -195,7 +255,6 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
                   selectCard(index);
                 }}
                 onMouseEnter={pauseAutoRotation}
-                onTouchStart={pauseAutoRotation}
               >
                 <div className="path-card__inner">
                   <div className="path-card__icon">
