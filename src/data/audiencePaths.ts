@@ -1,0 +1,38 @@
+export const audiencePaths = [
+  {
+    id: "developpeur",
+    title: "Développeur",
+    intro: "Je veux voir vos compétences techniques",
+    items: ["Projets techniques", "Stack & outils", "Architecture", "Code & qualité"],
+    accent: "kynam",
+    icon: "code",
+    image: "/assets/images/greencard.png",
+  },
+  {
+    id: "chef-de-projet",
+    title: "Chef de projet",
+    intro: "Je veux comprendre votre vision produit",
+    items: ["Méthodologie", "Gestion de projet", "Vision & stratégie", "Organisation"],
+    accent: "violet",
+    icon: "briefcase",
+    image: "/assets/images/purplecard.png",
+  },
+  {
+    id: "e-commerce",
+    title: "E-commerce",
+    intro: "Je veux découvrir votre approche business",
+    items: ["Projets business", "Sourcing & négociation", "Analyse & optimisation", "Résultats concrets"],
+    accent: "gold",
+    icon: "cart",
+    image: "/assets/images/yellowcard.png",
+  },
+  {
+    id: "univers-personnel",
+    title: "Univers personnel",
+    intro: "Je veux découvrir votre univers et vos passions",
+    items: ["Curiosity Lab", "Thé, Chine, drone, vidéo...", "Voyages & inspirations", "Ce qui me nourrit"],
+    accent: "cyan",
+    icon: "orbit",
+    image: "/assets/images/greycard.png",
+  },
+];

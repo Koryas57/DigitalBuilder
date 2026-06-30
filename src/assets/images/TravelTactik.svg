@@ -1,0 +1,16 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="900" fill="#06111F"/>
+  <path d="M0 580C176 500 266 605 418 530C550 465 607 291 753 255C901 218 1010 320 1200 243V900H0V580Z" fill="#163A4D"/>
+  <path d="M0 690C177 610 297 716 452 654C576 604 635 465 771 431C921 394 1034 494 1200 420V900H0V690Z" fill="#1F6B6D"/>
+  <circle cx="962" cy="188" r="88" fill="#F7C96C"/>
+  <path d="M280 238H760C804.183 238 840 273.817 840 318V632C840 676.183 804.183 712 760 712H280C235.817 712 200 676.183 200 632V318C200 273.817 235.817 238 280 238Z" fill="#F6F8F4"/>
+  <path d="M250 341H790" stroke="#102033" stroke-width="30" stroke-linecap="round"/>
+  <path d="M305 438H478" stroke="#1F6B6D" stroke-width="24" stroke-linecap="round"/>
+  <path d="M305 501H700" stroke="#6E8E4F" stroke-width="24" stroke-linecap="round"/>
+  <path d="M305 564H604" stroke="#E99D5A" stroke-width="24" stroke-linecap="round"/>
+  <path d="M800 264L992 456L872 576L680 384L800 264Z" fill="#E99D5A"/>
+  <path d="M800 264L992 456L942 506L750 314L800 264Z" fill="#F7C96C"/>
+  <path d="M743 515L680 384L811 447L743 515Z" fill="#102033"/>
+  <text x="600" y="800" text-anchor="middle" fill="#F6F8F4" font-family="Inter, Arial, sans-serif" font-size="84" font-weight="800">TravelTactik</text>
+  <text x="600" y="852" text-anchor="middle" fill="#F7C96C" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="600">Planification de voyages intelligente</text>
+</svg>

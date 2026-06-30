@@ -1,0 +1,10 @@
+.jaguar-showroom {
+  width: 8vw;
+  height: 8vh;
+  position: relative;
+  bottom: 2px;
+  right: 0.5vw;
+  & canvas {
+    aspect-ratio: 16 / 9;
+  }
+}

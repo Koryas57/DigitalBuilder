@@ -1,0 +1,53 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000; // Assurez-vous que la modale soit au-dessus du reste du contenu
+}
+
+.modal-content {
+  width: 79vw;
+  height: 80vh;
+  background-color: transparent;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  text-align: center;
+  & button {
+    background: transparent;
+    color: white;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    box-shadow: 0px 1px 10px 1px #ede7f6;
+  }
+  &-banner {
+    display: flex;
+    justify-content: space-between;
+  }
+}
+
+.touch-controls {
+  position: absolute;
+  bottom: 2vh;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  z-index: 2100;
+
+  button {
+    padding: 1rem;
+    font-size: 1rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid white;
+    border-radius: 8px;
+    color: white;
+    backdrop-filter: blur(5px);
+  }
+}
