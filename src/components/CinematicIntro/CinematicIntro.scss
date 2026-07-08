@@ -101,6 +101,8 @@
   position: absolute;
   inset: 0;
   display: grid;
+  align-content: center;
+  justify-content: center;
   place-items: center;
   text-align: center;
   opacity: 0;
@@ -110,24 +112,51 @@
 }
 
 .intro-scene--loading {
+  align-content: end;
+  box-sizing: border-box;
+  padding-bottom: clamp(2.8rem, 8vh, 5.6rem);
   animation: scene-window 3400ms ease 250ms both;
 
   p {
-    margin: 0 0 1.25rem;
+    margin: 0 0 0.65rem;
     color: rgba(255, 250, 240, 0.84);
     font-size: clamp(0.78rem, 2vw, 1rem);
     font-weight: 820;
     letter-spacing: 0.08em;
     line-height: 1.35;
     text-transform: uppercase;
+    text-align: left;
+    justify-self: start;
   }
 }
 
 .intro-progress {
+  position: relative;
   width: min(20rem, 64vw);
-  height: 1px;
-  background: rgba(255, 250, 230, 0.22);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 250, 230, 0.26), transparent);
   overflow: hidden;
+  box-shadow: 0 0 24px rgba(183, 248, 202, 0.12);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 0.42rem;
+    height: 0.42rem;
+    border: 1px solid rgba(255, 250, 230, 0.28);
+    border-radius: 50%;
+    transform: translateY(-50%);
+  }
+
+  &::before {
+    left: 0;
+  }
+
+  &::after {
+    right: 0;
+  }
 
   i {
     display: block;
@@ -136,7 +165,7 @@
     transform: scaleX(0);
     transform-origin: left;
     background: linear-gradient(90deg, var(--gold), var(--kynam), #b992ff);
-    animation: progress-grow 2700ms ease both;
+    animation: progress-grow 2700ms ease both;  
   }
 }
 
@@ -145,7 +174,9 @@
 }
 
 .intro-scene--identity {
+  gap: clamp(0.12rem, 0.8vh, 0.45rem);
   animation: scene-window 4000ms ease 3900ms both;
+  justify-self: center;
 
   p,
   small {
@@ -155,14 +186,16 @@
     font-weight: 820;
     letter-spacing: 0.16em;
     text-transform: uppercase;
+    transform: translateY(-0.15rem);
+    text-align: left;
   }
 
   h2 {
-    margin: 0.35rem 0 0.55rem;
+    margin: 0;
     color: #fffaf0;
     font-size: clamp(4rem, 17vw, 10rem);
-    line-height: 0.74;
-    letter-spacing: -0.07em;
+    line-height: 0.84;
+    letter-spacing: -0.065em;
     text-transform: uppercase;
     text-shadow: 0 0 42px rgba(232, 207, 145, 0.16);
   }

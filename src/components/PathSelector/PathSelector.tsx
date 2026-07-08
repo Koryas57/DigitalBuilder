@@ -13,12 +13,15 @@ import { ParticleField } from "../CinematicIntro/ParticleField";
 import "./PathSelector.scss";
 
 interface PathSelectorProps {
-  onSelectPath: () => void;
+  onSelectPath: (pathId?: string) => void;
 }
 
 type PathCardStyle = React.CSSProperties & {
   "--card-image": string;
+  "--spark-index"?: number;
 };
+
+type AudiencePath = (typeof audiencePaths)[number];
 
 const iconMap = {
   code: FiCode,
@@ -30,7 +33,9 @@ const iconMap = {
 const CARD_REVEAL_MS = 620;
 const CARD_TRANSITION_MS = 1120;
 const CARD_REVEAL_END_MS = 1800;
+const PATH_LAUNCH_MS = 1080;
 const SWIPE_MIN_DISTANCE = 24;
+const launchSparks = Array.from({ length: 18 }, (_, index) => index + 1);
 
 const getOffset = (index: number, activeIndex: number) => {
   const length = audiencePaths.length;
@@ -47,6 +52,7 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
   const [departingIndex, setDepartingIndex] = useState<number | null>(null);
   const [transitionDirection, setTransitionDirection] = useState<"next" | "previous">("next");
   const activeIndexRef = useRef(0);
@@ -57,6 +63,7 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
   const transitionTimerRef = useRef<number>();
   const revealTimerRef = useRef<number>();
   const revealEndTimerRef = useRef<number>();
+  const launchTimerRef = useRef<number>();
   const activePath = audiencePaths[activeIndex];
 
   useEffect(() => {
@@ -105,6 +112,7 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
       if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
       if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
       if (revealEndTimerRef.current) window.clearTimeout(revealEndTimerRef.current);
+      if (launchTimerRef.current) window.clearTimeout(launchTimerRef.current);
     };
   }, []);
 
@@ -172,6 +180,19 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
     animateToIndex(index);
   };
 
+  const launchPath = (path: AudiencePath) => {
+    if (isLaunching) return;
+
+    pauseAutoRotation();
+    setIsLaunching(true);
+
+    if (launchTimerRef.current) window.clearTimeout(launchTimerRef.current);
+
+    launchTimerRef.current = window.setTimeout(() => {
+      onSelectPath(path.id);
+    }, reducedMotion ? 240 : PATH_LAUNCH_MS);
+  };
+
   const startTouchSwipe = (event: React.TouchEvent<HTMLDivElement>) => {
     if (isTransitioningRef.current) return;
 
@@ -206,10 +227,22 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
   };
 
   return (
-    <section className={`path-selector path-selector--${activePath.accent}`} aria-label="Choix de parcours">
+    <section className={`path-selector path-selector--${activePath.accent} ${isLaunching ? "is-launching" : ""}`} aria-label="Choix de parcours">
       <ParticleField reducedMotion={reducedMotion} />
       <div className="path-selector__topology" aria-hidden="true" />
       <div className="path-selector__aurora" aria-hidden="true" />
+      {isLaunching && (
+        <div className="path-selector__launch" aria-hidden="true">
+          <div className="path-selector__launch-core" />
+          {launchSparks.map((spark) => (
+            <i
+              className="path-selector__launch-particle"
+              style={{ "--spark-index": spark } as PathCardStyle}
+              key={spark}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="path-selector__intro">
         <h2>Choisissez votre <em>parcours</em></h2>
@@ -274,7 +307,7 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
-                      if (isActive) onSelectPath();
+                      if (isActive) launchPath(path);
                       else selectCard(index);
                     }}
                     tabIndex={isActive ? 0 : -1}
@@ -310,7 +343,7 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
       <div className="path-selector__free">
         <span aria-hidden="true">✧</span>
         <p>Pas encore sûr ?</p>
-        <button type="button" onClick={onSelectPath}>
+        <button type="button" onClick={() => onSelectPath()}>
           Explorer le site librement
         </button>
       </div>

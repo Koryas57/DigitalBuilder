@@ -69,6 +69,93 @@
   pointer-events: none;
 }
 
+.path-selector__launch {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.96) 0 7%, color-mix(in srgb, var(--selector-accent) 74%, white) 8% 13%, color-mix(in srgb, var(--selector-accent) 48%, transparent) 20%, rgba(2, 4, 3, 0.48) 48%, rgba(2, 4, 3, 0) 78%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--selector-accent) 38%, transparent), transparent 46%);
+  animation: path-launch-flash 1080ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.path-selector__launch::before,
+.path-selector__launch::after,
+.path-selector__launch-core {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.path-selector__launch::before {
+  width: min(44rem, 120vw);
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, var(--selector-accent) 74%, white);
+  box-shadow:
+    0 0 38px color-mix(in srgb, var(--selector-accent) 70%, transparent),
+    inset 0 0 56px color-mix(in srgb, var(--selector-accent) 28%, transparent);
+  animation: path-launch-ring 1080ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.path-selector__launch::after {
+  width: min(1.2rem, 4vw);
+  height: min(72rem, 140vh);
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, #fff, var(--selector-accent), #fff, transparent);
+  box-shadow:
+    0 0 42px #fff,
+    0 0 90px color-mix(in srgb, var(--selector-accent) 82%, transparent);
+  transform: rotate(42deg) scaleY(0);
+  animation: path-launch-slit 1080ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.path-selector__launch-core {
+  width: min(18rem, 58vw);
+  aspect-ratio: 1;
+  background:
+    radial-gradient(circle, #fff 0 9%, color-mix(in srgb, var(--selector-accent) 82%, white) 10% 17%, transparent 54%),
+    conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--selector-accent) 84%, white), transparent 28%, #fff, transparent 58%);
+  filter: blur(0.2px);
+  animation: path-launch-core 1080ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.path-selector__launch-particle {
+  --particle-angle: calc(var(--spark-index) * 20deg);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 14px #fff,
+    0 0 34px var(--selector-accent);
+  transform: rotate(var(--particle-angle)) translateX(min(44vw, 24rem)) scale(0.5);
+  animation: path-launch-particle 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--spark-index) * 12ms);
+}
+
+.path-selector.is-launching .path-selector__intro,
+.path-selector.is-launching .path-carousel__dots,
+.path-selector.is-launching .path-selector__free {
+  animation: path-launch-content 620ms ease both;
+}
+
+.path-selector.is-launching .path-card:not(.is-active) {
+  opacity: 0;
+  filter: blur(8px) brightness(0.36);
+}
+
+.path-selector.is-launching .path-card.is-active {
+  animation: path-launch-card 1080ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .path-selector__topology {
   opacity: 0.38;
   background:
@@ -654,6 +741,108 @@
   }
 }
 
+@keyframes path-launch-content {
+  to {
+    opacity: 0;
+    filter: blur(12px);
+    transform: scale(0.98);
+  }
+}
+
+@keyframes path-launch-card {
+  0% {
+    transform: var(--card-transform) translate3d(0, 0, 0) scale(1);
+    filter: saturate(1.16) brightness(1.02) blur(0);
+  }
+  48% {
+    transform: var(--card-transform) translate3d(0, 0, 170px) scale(1.08);
+    filter: saturate(1.45) brightness(1.35) blur(0);
+  }
+  100% {
+    transform: var(--card-transform) translate3d(0, 0, 520px) scale(1.44);
+    opacity: 0;
+    filter: saturate(1.8) brightness(2.1) blur(14px);
+  }
+}
+
+@keyframes path-launch-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+    filter: brightness(0.9);
+  }
+  28% {
+    opacity: 0.9;
+    transform: scale(1);
+    filter: brightness(1.2);
+  }
+  66% {
+    opacity: 1;
+    filter: brightness(2.25);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+    filter: brightness(3.2) blur(18px);
+  }
+}
+
+@keyframes path-launch-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.18);
+  }
+  42% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.75);
+  }
+}
+
+@keyframes path-launch-slit {
+  0% {
+    opacity: 0;
+    transform: rotate(42deg) scaleY(0);
+  }
+  34% {
+    opacity: 1;
+    transform: rotate(42deg) scaleY(0.78);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(42deg) scaleY(1.35) scaleX(2.4);
+  }
+}
+
+@keyframes path-launch-core {
+  0% {
+    opacity: 0;
+    transform: scale(0.22) rotate(0deg);
+  }
+  44% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.35) rotate(140deg);
+  }
+}
+
+@keyframes path-launch-particle {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--particle-angle)) translateX(0) scale(1.25);
+  }
+}
+
 @media (max-width: 860px) {
   .path-selector {
     grid-template-rows: auto auto auto auto;
@@ -735,6 +924,21 @@
 
   .path-selector__free {
     margin-top: clamp(1.35rem, 3vh, 2.25rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .path-selector__launch,
+  .path-selector__launch::before,
+  .path-selector__launch::after,
+  .path-selector__launch-core,
+  .path-selector__launch-particle,
+  .path-selector.is-launching .path-card.is-active {
+    animation-duration: 240ms;
+  }
+
+  .path-selector__launch-particle {
+    display: none;
   }
 }
 

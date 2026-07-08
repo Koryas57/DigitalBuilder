@@ -12,7 +12,8 @@ export const IntroTypography: React.FC = () => {
       </section>
 
       <section className="intro-scene intro-scene--identity" aria-label="Yacine Nezreg">
-        <h2>Yacine<br />Nezreg</h2>
+        <h2>Yacine<br /> Nezreg</h2>
+        <br />
         <small>Bâtisseur digital</small>
       </section>
 

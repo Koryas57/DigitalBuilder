@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "gridSize": 0.1,
+  "modules": [
+    {
+      "id": "d3e45433-dd49-4168-8e4f-18ccaf428803",
+      "type": "corridor",
+      "asset": "corridor",
+      "position": [
+        4.6000000000000005,
+        -0.2,
+        -2
+      ],
+      "rotation": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "props": {}
+    },
+    {
+      "id": "2e8f22ea-006f-4da1-89c2-78af428320db",
+      "type": "corridor",
+      "asset": "corridor",
+      "position": [
+        -6.175,
+        -0.2,
+        2
+      ],
+      "rotation": 180,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "props": {}
+    },
+    {
+      "id": "afaf7579-8e64-4b41-b9f3-cab325d7f7cb",
+      "type": "corridor",
+      "asset": "corridor",
+      "position": [
+        -12.100000000000001,
+        -0.2,
+        -11.600000000000001
+      ],
+      "rotation": 180,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "props": {}
+    },
+    {
+      "id": "f1e5f48e-8905-48e7-99c4-5d2bb721bd07",
+      "type": "corridor",
+      "asset": "corridor",
+      "position": [
+        10.59,
+        -0.2,
+        11.6
+      ],
+      "rotation": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "props": {}
+    },
+    {
+      "id": "1e21a8c3-ad42-4e71-8da0-6e0929fa6c2a",
+      "type": "playerSpawn",
+      "asset": "corridor",
+      "position": [
+        5.2,
+        0,
+        7.17
+      ],
+      "rotation": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "props": {}
+    }
+  ]
+}
