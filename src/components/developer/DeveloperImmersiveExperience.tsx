@@ -38,6 +38,22 @@ export const DeveloperImmersiveExperience: React.FC<DeveloperImmersiveExperience
     return () => mediaQuery.removeEventListener("change", updateReducedMotion);
   }, []);
 
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.classList.add("is-corridor-fullscreen");
+    document.documentElement.classList.add("is-corridor-fullscreen");
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.classList.remove("is-corridor-fullscreen");
+      document.documentElement.classList.remove("is-corridor-fullscreen");
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
+
   return (
     <div className="developer-r3f developer-r3f--corridor">
       <div className="developer-r3f__top">
@@ -53,9 +69,7 @@ export const DeveloperImmersiveExperience: React.FC<DeveloperImmersiveExperience
           <FiMail aria-hidden="true" />
           Contact
         </a>
-        <span>
-          WASD / ZQSD avancer - souris regarder - Shift sprint - R reset - P position
-        </span>
+        <span>Parcours developpeur</span>
       </div>
 
       <div className="developer-r3f__stage">
@@ -64,6 +78,8 @@ export const DeveloperImmersiveExperience: React.FC<DeveloperImmersiveExperience
             movementInput={movementInput}
             lookInput={lookInput}
             reducedMotion={reducedMotion}
+            onQuickMode={onQuickMode}
+            onBackToSelector={onBackToSelector}
           />
         ) : (
           <div className="developer-r3f-fallback">
@@ -96,6 +112,7 @@ export const DeveloperImmersiveExperience: React.FC<DeveloperImmersiveExperience
           onQuickMode={onQuickMode}
           onBackToSelector={onBackToSelector}
           canInteract={false}
+          showNavigation={false}
         />
       </div>
     </div>

@@ -8,6 +8,7 @@ interface MobileJoystickProps {
   onQuickMode: () => void;
   onBackToSelector: () => void;
   canInteract: boolean;
+  showNavigation?: boolean;
 }
 
 export const MobileJoystick: React.FC<MobileJoystickProps> = ({
@@ -17,6 +18,7 @@ export const MobileJoystick: React.FC<MobileJoystickProps> = ({
   onQuickMode,
   onBackToSelector,
   canInteract,
+  showNavigation = true,
 }) => {
   const padRef = useRef<HTMLDivElement | null>(null);
   const lookStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -38,16 +40,18 @@ export const MobileJoystick: React.FC<MobileJoystickProps> = ({
 
   return (
     <div className="developer-r3f-touch">
-      <div className="developer-r3f-touch__nav">
-        <button type="button" onClick={onBackToSelector}>
-          <FiArrowLeft aria-hidden="true" />
-          Parcours
-        </button>
-        <button type="button" onClick={onQuickMode}>
-          <FiList aria-hidden="true" />
-          Rapide
-        </button>
-      </div>
+      {showNavigation && (
+        <div className="developer-r3f-touch__nav">
+          <button type="button" onClick={onBackToSelector}>
+            <FiArrowLeft aria-hidden="true" />
+            Parcours
+          </button>
+          <button type="button" onClick={onQuickMode}>
+            <FiList aria-hidden="true" />
+            Rapide
+          </button>
+        </div>
+      )}
 
       <div
         className="developer-r3f-touch__pad"
@@ -101,4 +105,3 @@ export const MobileJoystick: React.FC<MobileJoystickProps> = ({
     </div>
   );
 };
-

@@ -4,26 +4,79 @@ import { corridorAudioManager } from "./AudioManager";
 const BACKGROUND_SOURCE = "/assets/audio/Background.mp3";
 const BACKGROUND_START_OFFSET = 3;
 
-export const DEFAULT_BACKGROUND_VOLUME = 0.18;
+export const DEFAULT_BACKGROUND_VOLUME = 1;
 
-export const useAmbienceAudio = (volume: number, enabled: boolean) => {
+export const useAmbienceAudio = (
+  volume: number,
+  enabled: boolean,
+  fadeInMs = 0,
+  startDelayMs = 0
+) => {
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const targetVolumeRef = React.useRef(volume);
+  const frameRef = React.useRef<number | null>(null);
+  const timerRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
-    if (!enabled || volume <= 0) {
+    targetVolumeRef.current = volume;
+  }, [volume]);
+
+  React.useEffect(() => {
+    const clearScheduled = () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    };
+
+    if (!enabled || targetVolumeRef.current <= 0) {
+      clearScheduled();
       audioRef.current?.pause();
       audioRef.current = null;
       return undefined;
     }
 
-    const audio = corridorAudioManager.playLoop(BACKGROUND_SOURCE, volume, BACKGROUND_START_OFFSET);
-    audioRef.current = audio;
+    const startAudio = () => {
+      const shouldFade = fadeInMs > 0;
+      const audio = corridorAudioManager.playLoop(
+        BACKGROUND_SOURCE,
+        shouldFade ? 0 : targetVolumeRef.current,
+        BACKGROUND_START_OFFSET
+      );
+      audioRef.current = audio;
+
+      if (!audio || !shouldFade) return;
+
+      const startedAt = performance.now();
+      const fade = (now: number) => {
+        const progress = Math.min(1, (now - startedAt) / fadeInMs);
+        audio.volume = targetVolumeRef.current * progress;
+        if (progress < 1) {
+          frameRef.current = window.requestAnimationFrame(fade);
+        } else {
+          frameRef.current = null;
+        }
+      };
+
+      frameRef.current = window.requestAnimationFrame(fade);
+    };
+
+    if (startDelayMs > 0) {
+      timerRef.current = window.setTimeout(startAudio, startDelayMs);
+    } else {
+      startAudio();
+    }
 
     return () => {
-      audio?.pause();
+      clearScheduled();
+      audioRef.current?.pause();
       audioRef.current = null;
     };
-  }, [enabled, volume > 0]);
+  }, [enabled, fadeInMs, startDelayMs]);
 
   React.useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;

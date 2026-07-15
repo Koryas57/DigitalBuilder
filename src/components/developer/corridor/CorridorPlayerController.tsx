@@ -14,21 +14,21 @@ import {
   PLAYER_HEIGHT,
   SPAWN_PRESETS,
 } from "./CorridorSpawn";
-import {
-  DEFAULT_BACKGROUND_VOLUME,
-  useAmbienceAudio,
-} from "./audio/useAmbienceAudio";
+import { useAmbienceAudio } from "./audio/useAmbienceAudio";
 import { useBreathingAudio } from "./audio/useBreathingAudio";
-import {
-  DEFAULT_FOOTSTEP_VOLUME,
-  useFootstepAudio,
-} from "./audio/useFootstepAudio";
+import { useFootstepAudio } from "./audio/useFootstepAudio";
 import {
   SPRINT_BOB_FREQUENCY,
   WALK_BOB_FREQUENCY,
   getHeadBob,
 } from "./useHeadBob";
 import { MOUSE_SENSITIVITY, updatePlayerMovement } from "./usePlayerMovement";
+import {
+  BASE_FOV,
+  PLAYING_CONTROL_STATE,
+  type IntroCameraState,
+  type PlayerControlState,
+} from "./intro/introConfig";
 
 export interface CorridorPlayerDebugState {
   position: [number, number, number];
@@ -57,6 +57,16 @@ interface CorridorPlayerControllerProps {
   spawnConfig: { name: string; position: [number, number, number]; rotation: number; source: string };
   collisionBounds: CorridorBounds[];
   audioUnlocked: boolean;
+  controlState?: PlayerControlState;
+  introCameraState?: IntroCameraState;
+  backgroundFadeInMs?: number;
+  backgroundStartDelayMs?: number;
+  onPlayerMoved?: () => void;
+  restartToken?: number;
+  footstepVolume: number;
+  backgroundVolume: number;
+  onFootstepVolumeChange: React.Dispatch<React.SetStateAction<number>>;
+  onBackgroundVolumeChange: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const MOBILE_LOOK_SENSITIVITY = 0.0036;
@@ -67,6 +77,13 @@ const roundVector = (vector: THREE.Vector3): [number, number, number] => [
   Number(vector.y.toFixed(3)),
   Number(vector.z.toFixed(3)),
 ];
+
+const setPerspectiveFov = (camera: THREE.Camera, fov: number) => {
+  if (!(camera instanceof THREE.PerspectiveCamera)) return;
+  if (Math.abs(camera.fov - fov) <= 0.01) return;
+  camera.fov = fov;
+  camera.updateProjectionMatrix();
+};
 
 export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> = ({
   modules,
@@ -80,6 +97,16 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
   spawnConfig,
   collisionBounds,
   audioUnlocked,
+  controlState = PLAYING_CONTROL_STATE,
+  introCameraState,
+  backgroundFadeInMs = 0,
+  backgroundStartDelayMs = 0,
+  onPlayerMoved,
+  restartToken = 0,
+  footstepVolume,
+  backgroundVolume,
+  onFootstepVolumeChange,
+  onBackgroundVolumeChange,
 }) => {
   const { camera, gl } = useThree();
   const keysRef = useRef<Record<string, boolean>>({});
@@ -96,12 +123,11 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
   const previousFootPhaseRef = useRef(0);
   const wasMovingRef = useRef(false);
   const lastFootstepTimeRef = useRef(0);
+  const lastRestartTokenRef = useRef(restartToken);
   const [footstepStep, setFootstepStep] = React.useState(0);
   const [sprintingState, setSprintingState] = React.useState(false);
-  const [footstepVolume, setFootstepVolume] = React.useState(DEFAULT_FOOTSTEP_VOLUME);
-  const [backgroundVolume, setBackgroundVolume] = React.useState(DEFAULT_BACKGROUND_VOLUME);
 
-  useAmbienceAudio(backgroundVolume, audioUnlocked);
+  useAmbienceAudio(backgroundVolume, audioUnlocked, backgroundFadeInMs, backgroundStartDelayMs);
   useBreathingAudio(sprintingState);
   useFootstepAudio(footstepStep, sprintingState, footstepVolume);
 
@@ -140,15 +166,23 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
   }, [resetToSpawn]);
 
   useEffect(() => {
+    if (restartToken === lastRestartTokenRef.current) return;
+    lastRestartTokenRef.current = restartToken;
+    resetToSpawn(0);
+  }, [restartToken, resetToSpawn]);
+
+  useEffect(() => {
     const canvas = gl.domElement;
 
     const handlePointerDown = (event: PointerEvent) => {
+      if (!controlState.lookEnabled) return;
       dragRef.current = true;
       lastPointerRef.current = { x: event.clientX, y: event.clientY };
       canvas.setPointerCapture(event.pointerId);
     };
 
     const handlePointerMove = (event: PointerEvent) => {
+      if (!controlState.lookEnabled) return;
       if (!dragRef.current) return;
       const dx = event.clientX - lastPointerRef.current.x;
       const dy = event.clientY - lastPointerRef.current.y;
@@ -166,9 +200,32 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      keysRef.current[event.key.toLowerCase()] = true;
+      const key = event.key.toLowerCase();
+      const movementKeys = new Set([
+        "arrowup",
+        "arrowdown",
+        "arrowleft",
+        "arrowright",
+        "w",
+        "a",
+        "s",
+        "d",
+        "z",
+        "q",
+        "shift",
+      ]);
 
-      if (event.key.toLowerCase() === "r") {
+      if (!controlState.controlsEnabled) {
+        if (movementKeys.has(key)) event.preventDefault();
+        keysRef.current = {};
+        velocityRef.current.set(0, 0, 0);
+        return;
+      }
+
+      if (movementKeys.has(key)) event.preventDefault();
+      keysRef.current[key] = true;
+
+      if (key === "r") {
         resetToSpawn();
       }
 
@@ -176,11 +233,11 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
         resetToSpawn(Number(event.key) - 1);
       }
 
-      if (event.key.toLowerCase() === "o") {
+      if (key === "o") {
         onOverviewModeChange(!overviewMode);
       }
 
-      if (event.key.toLowerCase() === "p") {
+      if (key === "p") {
         const direction = new THREE.Vector3();
         camera.getWorldDirection(direction);
         const mapCenter = bounds.length
@@ -200,23 +257,27 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
       }
 
       if (event.key === "[") {
-        setFootstepVolume((current) => Math.max(0, Number((current - 0.04).toFixed(2))));
+        onFootstepVolumeChange((current) => Math.max(0, Number((current - 0.04).toFixed(2))));
       }
 
       if (event.key === "]") {
-        setFootstepVolume((current) => Math.min(1, Number((current + 0.04).toFixed(2))));
+        onFootstepVolumeChange((current) => Math.min(1, Number((current + 0.04).toFixed(2))));
       }
 
-      if (event.key.toLowerCase() === "v") {
-        setBackgroundVolume((current) => Math.max(0, Number((current - 0.04).toFixed(2))));
+      if (key === "v") {
+        onBackgroundVolumeChange((current) => Math.max(0, Number((current - 0.04).toFixed(2))));
       }
 
-      if (event.key.toLowerCase() === "b") {
-        setBackgroundVolume((current) => Math.min(1, Number((current + 0.04).toFixed(2))));
+      if (key === "b") {
+        onBackgroundVolumeChange((current) => Math.min(1, Number((current + 0.04).toFixed(2))));
       }
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
+      if (!controlState.controlsEnabled) {
+        keysRef.current = {};
+        return;
+      }
       keysRef.current[event.key.toLowerCase()] = false;
     };
 
@@ -235,7 +296,29 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [bounds, camera, gl.domElement, onOverviewModeChange, overviewMode, resetToSpawn, spawnConfig.source]);
+  }, [
+    bounds,
+    camera,
+    controlState.controlsEnabled,
+    controlState.lookEnabled,
+    gl.domElement,
+    onOverviewModeChange,
+    onBackgroundVolumeChange,
+    onFootstepVolumeChange,
+    overviewMode,
+    resetToSpawn,
+    spawnConfig.source,
+  ]);
+
+  useEffect(() => {
+    if (controlState.controlsEnabled) return;
+    keysRef.current = {};
+    dragRef.current = false;
+    velocityRef.current.set(0, 0, 0);
+    previousFootPhaseRef.current = 0;
+    wasMovingRef.current = false;
+    setSprintingState(false);
+  }, [controlState.controlsEnabled]);
 
   useFrame((_, delta) => {
     if (overviewMode) {
@@ -243,9 +326,40 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
       return;
     }
 
+    if (introCameraState?.active) {
+      keysRef.current = {};
+      velocityRef.current.set(0, 0, 0);
+      yawRef.current = introCameraState.yaw;
+      pitchRef.current = introCameraState.pitch;
+      previousFootPhaseRef.current = 0;
+      wasMovingRef.current = false;
+
+      const right = new THREE.Vector3(
+        Math.cos(introCameraState.yaw),
+        0,
+        -Math.sin(introCameraState.yaw)
+      );
+      const targetPosition = positionRef.current.clone();
+      targetPosition.y = PLAYER_HEIGHT + introCameraState.verticalOffset;
+      targetPosition.addScaledVector(right, introCameraState.lateralOffset);
+
+      camera.position.lerp(targetPosition, 1 - Math.pow(0.0009, delta));
+      camera.rotation.set(
+        introCameraState.pitch,
+        introCameraState.yaw,
+        introCameraState.roll,
+        "YXZ"
+      );
+      setPerspectiveFov(camera, introCameraState.fov);
+      playerPositionRef.current.copy(positionRef.current);
+      return;
+    }
+
+    setPerspectiveFov(camera, BASE_FOV);
+
     const lookDeltaX = lookInput.x - lastLookRef.current.x;
     const lookDeltaY = lookInput.y - lastLookRef.current.y;
-    if (lookDeltaX || lookDeltaY) {
+    if (controlState.lookEnabled && (lookDeltaX || lookDeltaY)) {
       yawRef.current -= lookDeltaX * MOBILE_LOOK_SENSITIVITY;
       pitchRef.current = THREE.MathUtils.clamp(
         pitchRef.current - lookDeltaY * MOBILE_LOOK_SENSITIVITY,
@@ -257,19 +371,24 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
 
     const keys = keysRef.current;
     const forward =
-      (keys.w || keys.z || keys.arrowup ? 1 : 0) -
-      (keys.s || keys.arrowdown ? 1 : 0);
+      controlState.movementEnabled
+        ? (keys.w || keys.z || keys.arrowup ? 1 : 0) -
+          (keys.s || keys.arrowdown ? 1 : 0)
+        : 0;
     const strafe =
-      (keys.d || keys.arrowright ? 1 : 0) -
-      (keys.a || keys.q || keys.arrowleft ? 1 : 0);
-    const input = new THREE.Vector3(strafe + movementInput.x, 0, -forward + movementInput.z);
+      controlState.movementEnabled
+        ? (keys.d || keys.arrowright ? 1 : 0) -
+          (keys.a || keys.q || keys.arrowleft ? 1 : 0)
+        : 0;
+    const mobileInput = controlState.movementEnabled ? movementInput : { x: 0, z: 0 };
+    const input = new THREE.Vector3(strafe + mobileInput.x, 0, -forward + mobileInput.z);
     if (input.lengthSq() > 1) input.normalize();
 
     const movement = updatePlayerMovement({
       velocity: velocityRef.current,
       input,
       yaw: yawRef.current,
-      sprinting: Boolean(keys.shift),
+      sprinting: controlState.sprintEnabled && Boolean(keys.shift),
       delta,
     });
 
@@ -293,9 +412,10 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
       time,
       speed: movement.speed,
       sprinting: movement.sprinting,
-      reducedMotion,
+      reducedMotion: reducedMotion || !controlState.headBobEnabled,
     });
-    const moving = !reducedMotion && movement.speed > 0.08;
+    const moving = !reducedMotion && controlState.headBobEnabled && movement.speed > 0.08;
+    if (moving) onPlayerMoved?.();
     const footFrequency = movement.sprinting ? SPRINT_BOB_FREQUENCY : WALK_BOB_FREQUENCY;
     const footPhase = moving ? Math.sin(time * footFrequency) : 0;
     const phaseThreshold = 0.72;

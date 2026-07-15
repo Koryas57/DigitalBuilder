@@ -29,11 +29,25 @@ import { PlayerCapsuleCollider } from "./PlayerCapsuleCollider";
 import { corridorAudioManager } from "./audio/AudioManager";
 import { DEFAULT_BACKGROUND_VOLUME } from "./audio/useAmbienceAudio";
 import { DEFAULT_FOOTSTEP_VOLUME } from "./audio/useFootstepAudio";
+import {
+  INITIAL_INTRO_RUNTIME_STATE,
+  IntroManager,
+  type IntroRuntimeState,
+} from "./intro/IntroManager";
+import {
+  BASE_FOV,
+  DEFAULT_INTRO_CAMERA_STATE,
+  INTRO_AUDIO,
+  LOCKED_CONTROL_STATE,
+  type IntroCameraState,
+} from "./intro/introConfig";
 
 interface CorridorGameExperienceProps {
   movementInput: { x: number; z: number };
   lookInput: { x: number; y: number };
   reducedMotion: boolean;
+  onQuickMode: () => void;
+  onBackToSelector: () => void;
 }
 
 const initialDebug: CorridorPlayerDebugState = {
@@ -167,6 +181,8 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   movementInput,
   lookInput,
   reducedMotion,
+  onQuickMode,
+  onBackToSelector,
 }) => {
   const [objects, setObjects] = useState<CorridorModule[]>([]);
   const [wallCollisionBounds, setWallCollisionBounds] = useState<CorridorBounds[]>([]);
@@ -187,7 +203,18 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
     toneMapping: "ACESFilmicToneMapping",
     pixelRatio: 1,
   });
+  const [footstepVolume, setFootstepVolume] = useState(DEFAULT_FOOTSTEP_VOLUME);
+  const [backgroundVolume, setBackgroundVolume] = useState(DEFAULT_BACKGROUND_VOLUME);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [introState, setIntroState] = useState<IntroRuntimeState>(INITIAL_INTRO_RUNTIME_STATE);
+  const [introCameraState, setIntroCameraState] = useState<IntroCameraState>(
+    DEFAULT_INTRO_CAMERA_STATE
+  );
+  const [playerMoved, setPlayerMoved] = useState(false);
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const [pauseMessageVisible, setPauseMessageVisible] = useState(false);
+  const [debugConsoleVisible, setDebugConsoleVisible] = useState(false);
+  const [restartToken, setRestartToken] = useState(0);
   const playerPositionRef = useRef(new THREE.Vector3(...PLAYER_SPAWN.position));
   const corridorModules = React.useMemo(
     () => objects.filter((object) => (object.type ?? "corridor") === "corridor"),
@@ -233,6 +260,17 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
     },
     []
   );
+  const unlockAudio = React.useCallback(() => {
+    corridorAudioManager.unlock();
+    setAudioUnlocked(true);
+  }, []);
+  const lightingPresetIndex = LIGHTING_PRESET_ORDER.indexOf(lightingPreset);
+  const effectiveControlState = pauseOpen ? LOCKED_CONTROL_STATE : introState.controlState;
+  const handleRestart = React.useCallback(() => {
+    setRestartToken((current) => current + 1);
+    setPlayerMoved(false);
+    setPauseOpen(false);
+  }, []);
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -257,16 +295,22 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         });
         setExposureTrim(0);
       }
+      if (event.key === "F3") {
+        event.preventDefault();
+        setDebugConsoleVisible((current) => !current);
+      }
+      if (event.key === "Escape" && introState.phase === "playing") {
+        event.preventDefault();
+        setPauseOpen((current) => !current);
+      }
       if (!audioUnlocked) {
-        corridorAudioManager.unlock();
-        setAudioUnlocked(true);
+        unlockAudio();
       }
     };
 
     const handlePointerDown = () => {
       if (!audioUnlocked) {
-        corridorAudioManager.unlock();
-        setAudioUnlocked(true);
+        unlockAudio();
       }
     };
 
@@ -276,7 +320,20 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [audioUnlocked]);
+  }, [audioUnlocked, introState.phase, unlockAudio]);
+
+  React.useEffect(() => {
+    if (!pauseOpen) {
+      setPauseMessageVisible(false);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setPauseMessageVisible(true);
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
+  }, [pauseOpen]);
 
   return (
     <>
@@ -284,7 +341,7 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         className="developer-r3f-canvas"
         shadows
         dpr={[1, 2]}
-        camera={{ position: PLAYER_SPAWN.position, fov: 52, near: 0.04, far: 70 }}
+        camera={{ position: PLAYER_SPAWN.position, fov: BASE_FOV, near: 0.04, far: 70 }}
         gl={{
           antialias: true,
           powerPreference: "high-performance",
@@ -369,6 +426,16 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
             spawnConfig={spawnConfig}
             collisionBounds={bounds}
             audioUnlocked={audioUnlocked}
+            controlState={effectiveControlState}
+            introCameraState={introCameraState}
+            backgroundFadeInMs={INTRO_AUDIO.backgroundFadeInMs}
+            backgroundStartDelayMs={INTRO_AUDIO.backgroundStartDelayMs}
+            onPlayerMoved={() => setPlayerMoved(true)}
+            restartToken={restartToken}
+            footstepVolume={footstepVolume}
+            backgroundVolume={backgroundVolume}
+            onFootstepVolumeChange={setFootstepVolume}
+            onBackgroundVolumeChange={setBackgroundVolume}
           />
         </Suspense>
 
@@ -393,9 +460,120 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         </div>
       )}
 
-      {(DEBUG_PLAYER || DEBUG_COLLISIONS) && (
+      <IntroManager
+        mapReady={objects.length > 0}
+        audioUnlocked={audioUnlocked}
+        reducedMotion={reducedMotion}
+        finalYaw={spawnConfig.rotation}
+        playerMoved={playerMoved}
+        onRequestAudioUnlock={unlockAudio}
+        onIntroStateChange={setIntroState}
+        onCameraStateChange={setIntroCameraState}
+      />
+
+      {introState.phase === "playing" && !pauseOpen && (
+        <button
+          className="developer-r3f-pause-trigger"
+          type="button"
+          onClick={() => setPauseOpen(true)}
+        >
+          Pause
+        </button>
+      )}
+
+      {pauseOpen && (
+        <div className="developer-r3f-pause" role="dialog" aria-modal="true" aria-label="Menu pause">
+          <div className="developer-r3f-pause__panel">
+            <h2>Pause</h2>
+            <div className="developer-r3f-pause__actions">
+              <button type="button" onClick={() => setPauseOpen(false)}>
+                Reprendre
+              </button>
+              <button type="button" onClick={handleRestart}>
+                Recommencer
+              </button>
+              <button type="button" onClick={onQuickMode}>
+                Mode rapide
+              </button>
+              <button type="button" onClick={onBackToSelector}>
+                Choix de parcours
+              </button>
+              <a href="/#contact">Contact</a>
+            </div>
+            <div className="developer-r3f-pause__controls" aria-label="Reglages">
+              <label>
+                <span>
+                  Bruits de pas
+                  <strong>{Math.round(footstepVolume * 100)}%</strong>
+                </span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={footstepVolume}
+                  onChange={(event) => setFootstepVolume(Number(event.target.value))}
+                />
+              </label>
+              <label>
+                <span>
+                  Ambiance
+                  <strong>{Math.round(backgroundVolume * 100)}%</strong>
+                </span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={backgroundVolume}
+                  onChange={(event) => setBackgroundVolume(Number(event.target.value))}
+                />
+              </label>
+              <label>
+                <span>
+                  Exposition
+                  <strong>{(LIGHTING_PRESETS[lightingPreset].exposure + exposureTrim).toFixed(2)}</strong>
+                </span>
+                <input
+                  type="range"
+                  min="-0.35"
+                  max="0.4"
+                  step="0.01"
+                  value={exposureTrim}
+                  onChange={(event) => setExposureTrim(Number(event.target.value))}
+                />
+              </label>
+              <label>
+                <span>
+                  Lumiere
+                  <strong>{lightingPreset}</strong>
+                </span>
+                <input
+                  type="range"
+                  min="0"
+                  max={LIGHTING_PRESET_ORDER.length - 1}
+                  step="1"
+                  value={lightingPresetIndex}
+                  onChange={(event) => {
+                    setLightingPreset(LIGHTING_PRESET_ORDER[Number(event.target.value)]);
+                    setExposureTrim(0);
+                  }}
+                />
+              </label>
+            </div>
+            <span>Esc pour reprendre - F3 pour la debug console</span>
+          </div>
+          {pauseMessageVisible && (
+            <p className="developer-r3f-pause__message">
+              Comment se passe votre expérience ? Ce n'est qu'un aperçu de ce qui est possible.
+            </p>
+          )}
+        </div>
+      )}
+
+      {debugConsoleVisible && (DEBUG_PLAYER || DEBUG_COLLISIONS) && (
         <div className="developer-r3f-debug">
-          <strong>Corridor Debug</strong>
+          <strong>Debug Console</strong>
           <span>Position: {debug.position.join(", ")}</span>
           <span>Rotation: {debug.rotation}</span>
           <span>Module proche: {debug.nearestModuleId ?? "none"}</span>
@@ -423,6 +601,17 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
           <span>Max anisotropy: {renderStats.maxAnisotropy}</span>
           <span>Spawn presets: 1 / 2 / 3</span>
           <span>FPS: {debug.fps}</span>
+          <span>Experience phase: {introState.phase}</span>
+          <span>Intro enabled: {introState.introEnabled ? "yes" : "no"}</span>
+          <span>Intro sentence: {introState.sentenceIndex}</span>
+          <span>Intro camera: {introState.cameraProgress.toFixed(2)}</span>
+          <span>Current FOV: {introState.currentFov.toFixed(2)}</span>
+          <span>Controls enabled: {introState.controlState.controlsEnabled ? "yes" : "no"}</span>
+          <span>Movement enabled: {introState.controlState.movementEnabled ? "yes" : "no"}</span>
+          <span>Look enabled: {introState.controlState.lookEnabled ? "yes" : "no"}</span>
+          <span>Head bob enabled: {introState.controlState.headBobEnabled ? "yes" : "no"}</span>
+          <span>Background audio: {introState.backgroundAudioState}</span>
+          <span>Neon played: {introState.neonPlayed ? "yes" : "no"}</span>
         </div>
       )}
     </>

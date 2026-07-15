@@ -21,7 +21,7 @@ export const DeveloperExperience: React.FC<DeveloperExperienceProps> = ({
   return (
     <section className={`developer-experience developer-experience--${mode}`}>
       <div className="experience-ambient" aria-hidden="true" />
-      {mode !== "selector" && (
+      {mode !== "selector" && mode !== "immersive" && (
         <ExperienceNav
           currentLabel="Parcours Developpeur"
           onBackToPaths={onBackToPaths}
