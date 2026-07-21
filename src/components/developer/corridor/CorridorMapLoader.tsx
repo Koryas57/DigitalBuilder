@@ -16,8 +16,8 @@ import { WarpTriggerSystem } from "./WarpTriggerSystem";
 
 export interface CorridorModule {
   id?: string;
-  type?: "corridor" | "playerSpawn" | "warp" | "trigger" | "audioPoint" | "lightPoint";
-  asset: "corridor";
+  type?: "corridor" | "playerSpawn" | "warp" | "trigger" | "audioPoint" | "lightPoint" | "monsterSpawn";
+  asset: "corridor" | "monster-mutant-7";
   position: [number, number, number];
   rotation: number;
   scale?: [number, number, number];
@@ -264,9 +264,10 @@ export const CorridorMapLoader: React.FC<CorridorMapLoaderProps> = ({
       })
       .then((document) => {
         if (!mounted) return;
-        const corridorModules = Array.isArray(document.modules)
-          ? document.modules.map(migrateModule).filter((module) => module.asset === "corridor")
+        const allModules = Array.isArray(document.modules)
+          ? document.modules.map(migrateModule)
           : [];
+        const corridorModules = allModules.filter((module) => module.asset === "corridor");
         const collisionBounds = buildCorridorWallColliders(
           corridorModules.filter((module) => (module.type ?? "corridor") === "corridor"),
           prefabWallSegments
@@ -276,21 +277,22 @@ export const CorridorMapLoader: React.FC<CorridorMapLoaderProps> = ({
             prefabFootprint
           )
         );
-        setModules(corridorModules);
-        onLoaded(corridorModules, collisionBounds, {
+        setModules(allModules);
+        onLoaded(allModules, collisionBounds, {
           ...renderStats,
           lampBoosts: lampAnchors.length * corridorModules.length,
         });
         console.info("[Corridor map] loaded", {
           path: CORRIDOR_MAP_PATH,
-          modules: corridorModules.length,
+          modules: allModules.length,
+          corridorModules: corridorModules.length,
           gridSize: document.gridSize,
           collisionBounds: collisionBounds.length,
           textureCount: renderStats.textures,
           importedLights: renderStats.importedLights,
           lampBoosts: lampAnchors.length * corridorModules.length,
         });
-        corridorModules.forEach((module, index) => {
+        allModules.forEach((module, index) => {
           console.info("[Corridor map] module", {
             index,
             id: module.id,

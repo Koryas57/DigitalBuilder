@@ -3,6 +3,12 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import {
+  EMPTY_MONSTER_DEBUG_STATE,
+  MONSTER_MUTANT_CONFIG,
+  type MonsterDebugState,
+} from "../../../data/monsterMutantConfig";
+import { MonsterPresenceController } from "../../corridor/entities/MonsterPresenceController";
+import {
   CorridorCollisionSystem,
   buildCorridorBounds,
   type CorridorBounds,
@@ -188,6 +194,7 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   const [wallCollisionBounds, setWallCollisionBounds] = useState<CorridorBounds[]>([]);
   const [portalContact, setPortalContact] = useState(false);
   const [debug, setDebug] = useState<CorridorPlayerDebugState>(initialDebug);
+  const [monsterDebug, setMonsterDebug] = useState<MonsterDebugState>(EMPTY_MONSTER_DEBUG_STATE);
   const [overviewMode, setOverviewMode] = useState(false);
   const [materialOverrideEnabled, setMaterialOverrideEnabled] = useState(false);
   const [collisionDebugVisible, setCollisionDebugVisible] = useState(false);
@@ -215,7 +222,15 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   const [pauseMessageVisible, setPauseMessageVisible] = useState(false);
   const [debugConsoleVisible, setDebugConsoleVisible] = useState(false);
   const [restartToken, setRestartToken] = useState(0);
+  const [damageToken, setDamageToken] = useState(0);
+  const [damageOverlayState, setDamageOverlayState] = useState<"hidden" | "active" | "fading">("hidden");
+  const [playerHitCount, setPlayerHitCount] = useState(0);
+  const [playerDowned, setPlayerDowned] = useState(false);
+  const [recoveryToken, setRecoveryToken] = useState(0);
+  const [monsterSpawnCycleToken, setMonsterSpawnCycleToken] = useState(0);
   const playerPositionRef = useRef(new THREE.Vector3(...PLAYER_SPAWN.position));
+  const damageAudioRef = useRef<HTMLAudioElement | null>(null);
+  const damageFadeTimerRef = useRef<number | null>(null);
   const corridorModules = React.useMemo(
     () => objects.filter((object) => (object.type ?? "corridor") === "corridor"),
     [objects]
@@ -265,11 +280,82 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
     setAudioUnlocked(true);
   }, []);
   const lightingPresetIndex = LIGHTING_PRESET_ORDER.indexOf(lightingPreset);
-  const effectiveControlState = pauseOpen ? LOCKED_CONTROL_STATE : introState.controlState;
+  const effectiveBackgroundVolume =
+    damageOverlayState !== "hidden" || playerDowned
+      ? backgroundVolume * 0.56
+      : backgroundVolume;
+  const effectiveControlState = pauseOpen || playerDowned ? LOCKED_CONTROL_STATE : introState.controlState;
   const handleRestart = React.useCallback(() => {
     setRestartToken((current) => current + 1);
     setPlayerMoved(false);
+    setDamageOverlayState("hidden");
+    setPlayerHitCount(0);
+    setPlayerDowned(false);
+    setRecoveryToken((current) => current + 1);
+    setMonsterSpawnCycleToken((current) => current + 1);
     setPauseOpen(false);
+  }, []);
+  const handlePlayerDamage = React.useCallback(() => {
+    if (playerDowned) return;
+    setDamageToken((current) => current + 1);
+    setDamageOverlayState("active");
+    setPlayerHitCount((current) => {
+      const next = current + 1;
+      if (next >= 4) {
+        setPlayerDowned(true);
+      }
+      return next;
+    });
+
+    if (!damageAudioRef.current || damageAudioRef.current.ended) {
+      const audio = corridorAudioManager.playOneShot(
+        MONSTER_MUTANT_CONFIG.audio.breathingDamage,
+        1,
+        3500
+      );
+      if (audio) {
+        damageAudioRef.current = audio;
+        audio.volume = 1;
+        audio.addEventListener(
+          "ended",
+          () => {
+            setDamageOverlayState("fading");
+            if (damageFadeTimerRef.current !== null) {
+              window.clearTimeout(damageFadeTimerRef.current);
+            }
+            damageFadeTimerRef.current = window.setTimeout(() => {
+              setDamageOverlayState("hidden");
+              damageFadeTimerRef.current = null;
+            }, 2400);
+          },
+          { once: true }
+        );
+      } else if (damageFadeTimerRef.current === null) {
+        damageFadeTimerRef.current = window.setTimeout(() => {
+          setDamageOverlayState("fading");
+          damageFadeTimerRef.current = window.setTimeout(() => {
+            setDamageOverlayState("hidden");
+            damageFadeTimerRef.current = null;
+          }, 2400);
+        }, 3200);
+      }
+    } else {
+      damageAudioRef.current.volume = 1;
+    }
+  }, [playerDowned]);
+  const handleRecover = React.useCallback(() => {
+    setPlayerDowned(false);
+    setPlayerHitCount(0);
+    setRecoveryToken((current) => current + 1);
+    setMonsterSpawnCycleToken((current) => current + 1);
+    setDamageOverlayState("fading");
+    if (damageFadeTimerRef.current !== null) {
+      window.clearTimeout(damageFadeTimerRef.current);
+    }
+    damageFadeTimerRef.current = window.setTimeout(() => {
+      setDamageOverlayState("hidden");
+      damageFadeTimerRef.current = null;
+    }, 1400);
   }, []);
 
   React.useEffect(() => {
@@ -334,6 +420,15 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
 
     return () => window.clearTimeout(timer);
   }, [pauseOpen]);
+
+  React.useEffect(
+    () => () => {
+      if (damageFadeTimerRef.current !== null) window.clearTimeout(damageFadeTimerRef.current);
+      damageAudioRef.current?.pause();
+      damageAudioRef.current = null;
+    },
+    []
+  );
 
   return (
     <>
@@ -433,9 +528,23 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
             onPlayerMoved={() => setPlayerMoved(true)}
             restartToken={restartToken}
             footstepVolume={footstepVolume}
-            backgroundVolume={backgroundVolume}
+            backgroundVolume={effectiveBackgroundVolume}
             onFootstepVolumeChange={setFootstepVolume}
             onBackgroundVolumeChange={setBackgroundVolume}
+            damageImpulseToken={damageToken}
+            playerDowned={playerDowned}
+            recoveryToken={recoveryToken}
+          />
+          <MonsterPresenceController
+            modules={objects}
+            collisionBounds={bounds}
+            playerPositionRef={playerPositionRef}
+            introPhase={introState.phase}
+            active={introState.phase === "playing" && !pauseOpen}
+            onDebugChange={setMonsterDebug}
+            onPlayerDamage={handlePlayerDamage}
+            playerDowned={playerDowned}
+            spawnCycleToken={monsterSpawnCycleToken}
           />
         </Suspense>
 
@@ -457,6 +566,28 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
       {portalContact && (
         <div className="developer-r3f-portal-message">
           Passage verrouille
+        </div>
+      )}
+
+      {damageOverlayState !== "hidden" && (
+        <div
+          className={`developer-r3f-damage-overlay is-${damageOverlayState}${playerDowned ? " is-downed" : ""}`}
+          aria-hidden="true"
+        >
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
+      )}
+
+      {playerDowned && (
+        <div className="developer-r3f-recover" onClick={handleRecover}>
+          <button type="button">
+            <span>Appuyer pour se relever</span>
+          </button>
         </div>
       )}
 
@@ -601,6 +732,8 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
           <span>Max anisotropy: {renderStats.maxAnisotropy}</span>
           <span>Spawn presets: 1 / 2 / 3</span>
           <span>FPS: {debug.fps}</span>
+          <span>Player hits: {playerHitCount}</span>
+          <span>Player downed: {playerDowned ? "yes" : "no"}</span>
           <span>Experience phase: {introState.phase}</span>
           <span>Intro enabled: {introState.introEnabled ? "yes" : "no"}</span>
           <span>Intro sentence: {introState.sentenceIndex}</span>
@@ -612,6 +745,27 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
           <span>Head bob enabled: {introState.controlState.headBobEnabled ? "yes" : "no"}</span>
           <span>Background audio: {introState.backgroundAudioState}</span>
           <span>Neon played: {introState.neonPlayed ? "yes" : "no"}</span>
+          <span>Monster loaded: {monsterDebug.loaded ? "yes" : "no"}</span>
+          <span>Monster visible: {monsterDebug.visible ? "yes" : "no"} / N</span>
+          <span>Monster state: {monsterDebug.state}</span>
+          <span>Monster AI: {monsterDebug.aiMode}</span>
+          <span>Monster blocked: {monsterDebug.blocked ? "yes" : "no"}</span>
+          <span>Monster player dist: {monsterDebug.playerDistance ?? "none"}</span>
+          <span>Monster path: {monsterDebug.assetPath}</span>
+          <span>Monster anim: {monsterDebug.currentAnimation ?? "none"}</span>
+          <span>Monster anim index: {monsterDebug.animationIndex}</span>
+          <span>Monster clips: {monsterDebug.clipCount} / J K H U I G</span>
+          <span>Monster clip names: {monsterDebug.clipNames.slice(0, 8).join(", ") || "none"}{monsterDebug.clipNames.length > 8 ? "..." : ""}</span>
+          <span>Monster scale: {monsterDebug.scale.toFixed(4)}</span>
+          <span>Monster rotY: {monsterDebug.rotationY.toFixed(3)}</span>
+          <span>Monster pos: {monsterDebug.position.join(", ")}</span>
+          <span>Monster height: {monsterDebug.estimatedHeight.toFixed(3)}</span>
+          <span>Monster meshes: {monsterDebug.meshCount}</span>
+          <span>Monster skinned: {monsterDebug.skinnedMeshCount}</span>
+          <span>Monster materials: {monsterDebug.materialCount}</span>
+          <span>Monster missing textures: {monsterDebug.missingTextures.join(", ") || "none"}</span>
+          <span>Monster load ms: {monsterDebug.loadTimeMs}</span>
+          <span>Monster error: {monsterDebug.error ?? "none"}</span>
         </div>
       )}
     </>

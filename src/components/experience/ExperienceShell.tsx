@@ -1,13 +1,18 @@
-import React, { useCallback, useState } from "react";
+import React, { Suspense, useCallback, useState } from "react";
 import { CinematicIntro } from "../CinematicIntro/CinematicIntro";
 import { PathSelector } from "../PathSelector/PathSelector";
-import { DeveloperExperience } from "../developer/DeveloperExperience";
 import { PathPlaceholder } from "./PathPlaceholder";
 import { getExperiencePath, type PathId } from "../../data/paths";
 import { useIntroState } from "../../hooks/useIntroState";
 import "./ExperienceShell.scss";
 
 type ExperienceView = "pathSelection" | "developerPath" | "placeholder";
+
+const DeveloperExperience = React.lazy(() =>
+  import("../developer/DeveloperExperience").then((module) => ({
+    default: module.DeveloperExperience,
+  }))
+);
 
 export const ExperienceShell: React.FC = () => {
   const { isIntroVisible, completeIntro } = useIntroState();
@@ -51,10 +56,12 @@ export const ExperienceShell: React.FC = () => {
       {view === "pathSelection" && <PathSelector onSelectPath={handleSelectPath} />}
 
       {view === "developerPath" && (
-        <DeveloperExperience
-          onBackToPaths={showPathSelection}
-          onReplayIntro={replayIntro}
-        />
+        <Suspense fallback={null}>
+          <DeveloperExperience
+            onBackToPaths={showPathSelection}
+            onReplayIntro={replayIntro}
+          />
+        </Suspense>
       )}
 
       {view === "placeholder" && selectedPath && (

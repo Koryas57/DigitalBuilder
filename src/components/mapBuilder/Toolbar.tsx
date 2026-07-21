@@ -61,6 +61,7 @@ export const Toolbar: React.FC = () => {
           <button type="button" onClick={() => requestAddObject("trigger")}>Trigger</button>
           <button type="button" onClick={() => requestAddObject("audioPoint")}>AudioPoint</button>
           <button type="button" onClick={() => requestAddObject("lightPoint")}>LightPoint</button>
+          <button type="button" onClick={() => requestAddObject("monsterSpawn")}>MonsterSpawn</button>
         </div>
       </section>
 

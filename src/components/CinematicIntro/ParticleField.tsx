@@ -36,9 +36,12 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ reducedMotion }) =
     let width = 0;
     let height = 0;
     let particles: Particle[] = [];
+    let lastFrameTime = 0;
+    const isSmallScreen = () => window.matchMedia("(max-width: 680px)").matches;
 
     const resize = () => {
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      const mobile = isSmallScreen();
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 1.75);
       width = canvas.clientWidth;
       height = canvas.clientHeight;
       canvas.width = Math.floor(width * pixelRatio);
@@ -46,8 +49,8 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ reducedMotion }) =
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
       const targetCount = Math.min(
-        width < 680 ? 44 : 82,
-        Math.max(34, Math.floor((width * height) / 18000))
+        mobile ? 30 : 72,
+        Math.max(mobile ? 22 : 32, Math.floor((width * height) / (mobile ? 28000 : 21000)))
       );
 
       particles = Array.from({ length: targetCount }, () =>
@@ -61,10 +64,13 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ reducedMotion }) =
       context.strokeStyle = "rgba(183, 248, 202, 0.22)";
       context.lineWidth = 1;
 
-      for (let row = -2; row < 9; row += 1) {
+      const rowEnd = isSmallScreen() ? 6 : 9;
+      const xStep = isSmallScreen() ? 28 : 18;
+
+      for (let row = -2; row < rowEnd; row += 1) {
         context.beginPath();
         const yBase = height * 0.15 + row * 58;
-        for (let x = -40; x <= width + 40; x += 18) {
+        for (let x = -40; x <= width + 40; x += xStep) {
           const wave =
             Math.sin((x + time * 0.012) * 0.012 + row * 0.8) * 12 +
             Math.cos((x - time * 0.006) * 0.008) * 8;
@@ -79,6 +85,15 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ reducedMotion }) =
     };
 
     const draw = (time = 0) => {
+      const mobile = isSmallScreen();
+      const minFrameGap = mobile ? 1000 / 30 : 1000 / 50;
+
+      if (!reducedMotion && time - lastFrameTime < minFrameGap) {
+        animationFrame = requestAnimationFrame(draw);
+        return;
+      }
+
+      lastFrameTime = time;
       context.clearRect(0, 0, width, height);
 
       const gradient = context.createRadialGradient(

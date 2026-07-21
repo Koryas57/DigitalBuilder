@@ -1,6 +1,7 @@
 import React from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
+import { MonsterSpawnPoint } from "../corridor/entities/MonsterSpawnPoint";
 import { PrefabInstance } from "./PrefabManager";
 import { useMapBuilderStore } from "./mapBuilderStore";
 import type { MapModule } from "./types";
@@ -27,6 +28,8 @@ export const SelectableModule: React.FC<SelectableModuleProps> = ({ module }) =>
     >
       {module.type === "corridor" ? (
         <PrefabInstance asset={module.asset} selected={selected} />
+      ) : module.type === "monsterSpawn" ? (
+        <MonsterSpawnPoint selected={selected} />
       ) : (
         <group>
           <mesh position={[0, 0.55, 0]}>

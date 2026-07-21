@@ -48,6 +48,14 @@ const defaultPropsByType = (type: MapObjectType): MapObjectProps => {
     };
   }
 
+  if (type === "monsterSpawn") {
+    return {
+      enabled: true,
+      scenario: "debug-idle",
+      initialAnimation: "idle",
+    };
+  }
+
   return {};
 };
 
@@ -60,7 +68,7 @@ const createMapModule = (
 ): MapModule => ({
   id,
   type,
-  asset: "corridor",
+  asset: type === "monsterSpawn" ? "monster-mutant-7" : "corridor",
   position: snapPosition(position, gridSize),
   rotation,
   scale: [1, 1, 1],
@@ -139,10 +147,10 @@ const parseDocument = (value: string): MapBuilderDocument => {
     version: 1,
     gridSize: typeof parsed.gridSize === "number" ? parsed.gridSize : DEFAULT_GRID_SIZE,
     modules: parsed.modules.map((module, index) => {
-      const asset = module.asset ?? "corridor";
       const type = module.type ?? "corridor";
+      const asset = module.asset ?? (type === "monsterSpawn" ? "monster-mutant-7" : "corridor");
 
-      if (asset !== "corridor") {
+      if (asset !== "corridor" && asset !== "monster-mutant-7") {
         throw new Error(`Module ${index}: asset inconnu.`);
       }
 

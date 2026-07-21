@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { ExperienceNav } from "../experience/ExperienceNav";
-import { DeveloperImmersiveExperience } from "./DeveloperImmersiveExperience";
 import { DeveloperModeSelector } from "./DeveloperModeSelector";
 import { DeveloperQuickView } from "./DeveloperQuickView";
 import "./DeveloperExperience.scss";
@@ -11,6 +10,12 @@ interface DeveloperExperienceProps {
   onBackToPaths: () => void;
   onReplayIntro: () => void;
 }
+
+const DeveloperImmersiveExperience = React.lazy(() =>
+  import("./DeveloperImmersiveExperience").then((module) => ({
+    default: module.DeveloperImmersiveExperience,
+  }))
+);
 
 export const DeveloperExperience: React.FC<DeveloperExperienceProps> = ({
   onBackToPaths,
@@ -39,10 +44,12 @@ export const DeveloperExperience: React.FC<DeveloperExperienceProps> = ({
       )}
 
       {mode === "immersive" && (
-        <DeveloperImmersiveExperience
-          onQuickMode={() => setMode("quick")}
-          onBackToSelector={() => setMode("selector")}
-        />
+        <Suspense fallback={null}>
+          <DeveloperImmersiveExperience
+            onQuickMode={() => setMode("quick")}
+            onBackToSelector={() => setMode("selector")}
+          />
+        </Suspense>
       )}
 
       {mode === "quick" && (

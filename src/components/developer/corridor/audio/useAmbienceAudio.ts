@@ -33,7 +33,7 @@ export const useAmbienceAudio = (
       }
     };
 
-    if (!enabled || targetVolumeRef.current <= 0) {
+    if (targetVolumeRef.current <= 0) {
       clearScheduled();
       audioRef.current?.pause();
       audioRef.current = null;
@@ -47,9 +47,11 @@ export const useAmbienceAudio = (
         shouldFade ? 0 : targetVolumeRef.current,
         BACKGROUND_START_OFFSET
       );
+      if (!audio) return;
+
       audioRef.current = audio;
 
-      if (!audio || !shouldFade) return;
+      if (!shouldFade) return;
 
       const startedAt = performance.now();
       const fade = (now: number) => {
@@ -65,14 +67,24 @@ export const useAmbienceAudio = (
       frameRef.current = window.requestAnimationFrame(fade);
     };
 
-    if (startDelayMs > 0) {
+    if (enabled && startDelayMs > 0) {
       timerRef.current = window.setTimeout(startAudio, startDelayMs);
-    } else {
+    } else if (enabled) {
       startAudio();
     }
 
+    const handleAudioUnlocked = () => {
+      if (!enabled) return;
+      if (audioRef.current && !audioRef.current.paused) return;
+      clearScheduled();
+      startAudio();
+    };
+
+    window.addEventListener("corridor-audio-unlocked", handleAudioUnlocked);
+
     return () => {
       clearScheduled();
+      window.removeEventListener("corridor-audio-unlocked", handleAudioUnlocked);
       audioRef.current?.pause();
       audioRef.current = null;
     };

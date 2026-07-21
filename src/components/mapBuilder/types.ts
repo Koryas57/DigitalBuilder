@@ -1,11 +1,12 @@
-export type PrefabAsset = "corridor";
+export type PrefabAsset = "corridor" | "monster-mutant-7";
 export type MapObjectType =
   | "corridor"
   | "playerSpawn"
   | "warp"
   | "trigger"
   | "audioPoint"
-  | "lightPoint";
+  | "lightPoint"
+  | "monsterSpawn";
 
 export type MapObjectProps = Record<string, unknown>;
 

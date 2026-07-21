@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local source assets too large for GitHub.
+public/assets/characters/monster-mutant-7/*.fbx
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

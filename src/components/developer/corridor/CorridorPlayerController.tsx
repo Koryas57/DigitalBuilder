@@ -15,7 +15,6 @@ import {
   SPAWN_PRESETS,
 } from "./CorridorSpawn";
 import { useAmbienceAudio } from "./audio/useAmbienceAudio";
-import { useBreathingAudio } from "./audio/useBreathingAudio";
 import { useFootstepAudio } from "./audio/useFootstepAudio";
 import {
   SPRINT_BOB_FREQUENCY,
@@ -67,6 +66,9 @@ interface CorridorPlayerControllerProps {
   backgroundVolume: number;
   onFootstepVolumeChange: React.Dispatch<React.SetStateAction<number>>;
   onBackgroundVolumeChange: React.Dispatch<React.SetStateAction<number>>;
+  damageImpulseToken?: number;
+  playerDowned?: boolean;
+  recoveryToken?: number;
 }
 
 const MOBILE_LOOK_SENSITIVITY = 0.0036;
@@ -107,6 +109,9 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
   backgroundVolume,
   onFootstepVolumeChange,
   onBackgroundVolumeChange,
+  damageImpulseToken = 0,
+  playerDowned = false,
+  recoveryToken = 0,
 }) => {
   const { camera, gl } = useThree();
   const keysRef = useRef<Record<string, boolean>>({});
@@ -124,11 +129,13 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
   const wasMovingRef = useRef(false);
   const lastFootstepTimeRef = useRef(0);
   const lastRestartTokenRef = useRef(restartToken);
+  const lastRecoveryTokenRef = useRef(recoveryToken);
+  const damageShakeUntilRef = useRef(0);
+  const lastDamageImpulseTokenRef = useRef(damageImpulseToken);
   const [footstepStep, setFootstepStep] = React.useState(0);
   const [sprintingState, setSprintingState] = React.useState(false);
 
   useAmbienceAudio(backgroundVolume, audioUnlocked, backgroundFadeInMs, backgroundStartDelayMs);
-  useBreathingAudio(sprintingState);
   useFootstepAudio(footstepStep, sprintingState, footstepVolume);
 
   const fallbackBounds = useMemo(() => buildCorridorBounds(modules), [modules]);
@@ -170,6 +177,13 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
     lastRestartTokenRef.current = restartToken;
     resetToSpawn(0);
   }, [restartToken, resetToSpawn]);
+
+  useEffect(() => {
+    if (recoveryToken === lastRecoveryTokenRef.current) return;
+    lastRecoveryTokenRef.current = recoveryToken;
+    velocityRef.current.set(0, 0, 0);
+    pitchRef.current = 0;
+  }, [recoveryToken]);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -311,18 +325,49 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
   ]);
 
   useEffect(() => {
-    if (controlState.controlsEnabled) return;
+    if (controlState.controlsEnabled && !playerDowned) return;
     keysRef.current = {};
     dragRef.current = false;
     velocityRef.current.set(0, 0, 0);
     previousFootPhaseRef.current = 0;
     wasMovingRef.current = false;
     setSprintingState(false);
-  }, [controlState.controlsEnabled]);
+  }, [controlState.controlsEnabled, playerDowned]);
+
+  useEffect(() => {
+    if (damageImpulseToken === lastDamageImpulseTokenRef.current) return;
+    lastDamageImpulseTokenRef.current = damageImpulseToken;
+    damageShakeUntilRef.current = performance.now() + 520;
+  }, [damageImpulseToken]);
 
   useFrame((_, delta) => {
     if (overviewMode) {
       velocityRef.current.set(0, 0, 0);
+      return;
+    }
+
+    if (playerDowned) {
+      keysRef.current = {};
+      dragRef.current = false;
+      velocityRef.current.set(0, 0, 0);
+      previousFootPhaseRef.current = 0;
+      wasMovingRef.current = false;
+      setSprintingState((current) => (current ? false : current));
+      setPerspectiveFov(camera, 76);
+
+      const nowMs = performance.now();
+      const shiver = reducedMotion ? 0 : Math.sin(nowMs * 0.018) * 0.012;
+      const downedPosition = positionRef.current.clone();
+      downedPosition.y = 0.34 + shiver;
+      downedPosition.x += reducedMotion ? 0 : Math.sin(nowMs * 0.011) * 0.018;
+      camera.position.lerp(downedPosition, 1 - Math.pow(0.00008, delta));
+      camera.rotation.set(
+        THREE.MathUtils.lerp(camera.rotation.x, -Math.PI * 0.49, 1 - Math.pow(0.00012, delta)),
+        yawRef.current + Math.sin(nowMs * 0.006) * 0.025,
+        0.18 + Math.sin(nowMs * 0.009) * 0.035,
+        "YXZ"
+      );
+      playerPositionRef.current.copy(positionRef.current);
       return;
     }
 
@@ -446,8 +491,23 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
     targetPosition.y = PLAYER_HEIGHT + breathing + headBob.y;
     targetPosition.x += headBob.x;
 
+    const nowMs = performance.now();
+    const shakeRemaining = Math.max(0, damageShakeUntilRef.current - nowMs);
+    if (shakeRemaining > 0 && !reducedMotion) {
+      const shakeProgress = shakeRemaining / 520;
+      const shake = Math.sin(nowMs * 0.08) * 0.035 * shakeProgress;
+      const sideKick = Math.cos(nowMs * 0.11) * 0.025 * shakeProgress;
+      targetPosition.x += sideKick;
+      targetPosition.y += shake;
+    }
+
     camera.position.lerp(targetPosition, 1 - Math.pow(0.0012, delta));
-    camera.rotation.set(pitchRef.current, yawRef.current, headBob.roll, "YXZ");
+    camera.rotation.set(
+      pitchRef.current + (shakeRemaining > 0 && !reducedMotion ? Math.sin(nowMs * 0.095) * 0.018 * (shakeRemaining / 520) : 0),
+      yawRef.current,
+      headBob.roll + (shakeRemaining > 0 && !reducedMotion ? Math.cos(nowMs * 0.13) * 0.026 * (shakeRemaining / 520) : 0),
+      "YXZ"
+    );
 
     frameStatsRef.current.elapsed += delta;
     frameStatsRef.current.frames += 1;

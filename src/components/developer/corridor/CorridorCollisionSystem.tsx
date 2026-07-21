@@ -251,7 +251,8 @@ export const findNearestModuleId = (position: THREE.Vector3, bounds: CorridorBou
 export const resolveCorridorCollision = (
   _previousPosition: THREE.Vector3,
   desiredPosition: THREE.Vector3,
-  bounds: CorridorBounds[]
+  bounds: CorridorBounds[],
+  radius = PLAYER_RADIUS
 ): CollisionResult => {
   const normalizedDesired = desiredPosition.clone();
   normalizedDesired.y = PLAYER_HEIGHT;
@@ -266,7 +267,7 @@ export const resolveCorridorCollision = (
   const resolved = normalizedDesired.clone();
   let collided = false;
   let nearestModuleId: string | null = findNearestModuleId(resolved, bounds);
-  const minDistance = PLAYER_RADIUS + WALL_COLLISION_THICKNESS * 0.5;
+  const minDistance = radius + WALL_COLLISION_THICKNESS * 0.5;
 
   for (let iteration = 0; iteration < 3; iteration += 1) {
     const point = new THREE.Vector2(resolved.x, resolved.z);
