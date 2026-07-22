@@ -1,5 +1,4 @@
 import React, { Suspense, useState } from "react";
-import { ExperienceNav } from "../experience/ExperienceNav";
 import { DeveloperModeSelector } from "./DeveloperModeSelector";
 import { DeveloperQuickView } from "./DeveloperQuickView";
 import "./DeveloperExperience.scss";
@@ -26,14 +25,6 @@ export const DeveloperExperience: React.FC<DeveloperExperienceProps> = ({
   return (
     <section className={`developer-experience developer-experience--${mode}`}>
       <div className="experience-ambient" aria-hidden="true" />
-      {mode !== "selector" && mode !== "immersive" && (
-        <ExperienceNav
-          currentLabel="Parcours Developpeur"
-          onBackToPaths={onBackToPaths}
-          onReplayIntro={onReplayIntro}
-          onQuickMode={() => setMode("quick")}
-        />
-      )}
 
       {mode === "selector" && (
         <DeveloperModeSelector
@@ -55,7 +46,8 @@ export const DeveloperExperience: React.FC<DeveloperExperienceProps> = ({
       {mode === "quick" && (
         <DeveloperQuickView
           onImmersiveMode={() => setMode("immersive")}
-          onBackToSelector={() => setMode("selector")}
+          onBackToPaths={onBackToPaths}
+          onReplayIntro={onReplayIntro}
         />
       )}
     </section>
