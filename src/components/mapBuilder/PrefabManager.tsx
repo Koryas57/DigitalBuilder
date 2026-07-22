@@ -12,7 +12,7 @@ export const PREFABS: Record<PrefabAsset, PrefabDefinition> = {
   "monster-mutant-7": {
     id: "monster-mutant-7",
     name: "Monster Mutant 7",
-    path: "/assets/characters/monster-mutant-7/monster_mutant_7.fbx",
+    path: "/assets/characters/monster-mutant-7/monster_mutant_7.glb",
   },
 };
 

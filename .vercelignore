@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+
+# Local source assets kept for editing/conversion, not needed at runtime.
+public/assets/characters/monster-mutant-7/*.fbx
+public/assets/maps/*.zip
+public/assets/maps/*.rar
+
+# Extracted/reference folders not loaded by the app. The game uses corridor.glb.
+public/assets/maps/corridor/**
+public/assets/maps/3dexport_portal_14_1620531094/**
+
+# Legacy experimental scenes kept locally only.
+public/assets/maps/mine_high/**
+public/assets/maps/old_bar.glb
+public/assets/maps/room-99mb/**
