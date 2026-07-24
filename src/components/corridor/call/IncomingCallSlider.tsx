@@ -1,8 +1,8 @@
 import React from "react";
 import { FiPhoneCall } from "react-icons/fi";
-import { FIRST_CALL_UI } from "../../../data/firstCallConfig";
 
 interface IncomingCallSliderProps {
+  slideHint: string;
   onAnswer: () => void;
   disabled?: boolean;
 }
@@ -11,6 +11,7 @@ const ANSWER_THRESHOLD = 0.78;
 const KEYBOARD_STEP = 0.12;
 
 export const IncomingCallSlider: React.FC<IncomingCallSliderProps> = ({
+  slideHint,
   onAnswer,
   disabled = false,
 }) => {
@@ -120,7 +121,7 @@ export const IncomingCallSlider: React.FC<IncomingCallSliderProps> = ({
       style={{ "--call-progress": progress } as React.CSSProperties}
     >
       <span className="first-call-slider__hint" aria-hidden="true">
-        {FIRST_CALL_UI.slideHint}
+        {slideHint}
         <i>››</i>
       </span>
       <span className="first-call-slider__target" aria-hidden="true">

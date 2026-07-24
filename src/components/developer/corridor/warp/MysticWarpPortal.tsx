@@ -11,10 +11,12 @@ import { WarpDebugHelper } from "./WarpDebugHelper";
 import { WarpParticles } from "./WarpParticles";
 import { createWarpPortalMaterial } from "./WarpPortalMaterial";
 import { WarpTrigger } from "./WarpTrigger";
+import { useWarpPortalAmbience } from "../audio/useWarpAudio";
 
 interface MysticWarpPortalProps {
   playerPositionRef: React.MutableRefObject<THREE.Vector3>;
   state: WarpState;
+  audioEnabled: boolean;
   triggerDebugVisible: boolean;
   onEnter: () => void;
   onDebugChange: (debug: WarpDebugState) => void;
@@ -23,10 +25,12 @@ interface MysticWarpPortalProps {
 export const MysticWarpPortal: React.FC<MysticWarpPortalProps> = ({
   playerPositionRef,
   state,
+  audioEnabled,
   triggerDebugVisible,
   onEnter,
   onDebugChange,
 }) => {
+  useWarpPortalAmbience({ playerPositionRef, enabled: audioEnabled });
   const { size } = useThree();
   const lightRef = React.useRef<THREE.PointLight>(null);
   const hoverRef = React.useRef(0);

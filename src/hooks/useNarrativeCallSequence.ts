@@ -1,17 +1,16 @@
 import React from "react";
 import {
-  FIRST_CALL_AUDIO,
-  FIRST_CALL_AUDIO_CONFIG,
-  type FirstCallState,
-} from "../data/firstCallConfig";
+  type NarrativeCallConfig,
+  type NarrativeCallState,
+} from "../data/narrativeCallConfig";
 import {
-  FIRST_CALL_SUBTITLES,
   type SubtitleCue,
 } from "../data/firstCallSubtitles";
 import { corridorAudioManager } from "../components/developer/corridor/audio/AudioManager";
 
-export interface FirstCallRuntime {
-  state: FirstCallState;
+export interface NarrativeCallRuntime {
+  callId: NarrativeCallConfig["id"];
+  state: NarrativeCallState;
   timerActive: boolean;
   ringingAudioActive: boolean;
   voiceCurrentTime: number;
@@ -26,10 +25,12 @@ export interface FirstCallRuntime {
   error: string | null;
 }
 
-interface UseFirstCallSequenceOptions {
+interface UseNarrativeCallSequenceOptions {
+  config: NarrativeCallConfig;
   ready: boolean;
   audioUnlocked: boolean;
   resetToken: number;
+  triggerToken?: number;
 }
 
 const pauseAndReset = (audio: HTMLAudioElement | null) => {
@@ -43,12 +44,14 @@ const pauseAndReset = (audio: HTMLAudioElement | null) => {
   }
 };
 
-export const useFirstCallSequence = ({
+export const useNarrativeCallSequence = ({
+  config,
   ready,
   audioUnlocked,
   resetToken,
-}: UseFirstCallSequenceOptions) => {
-  const [state, setState] = React.useState<FirstCallState>("idle");
+  triggerToken = 0,
+}: UseNarrativeCallSequenceOptions) => {
+  const [state, setState] = React.useState<NarrativeCallState>("idle");
   const [timerActive, setTimerActive] = React.useState(false);
   const [ringingAudioActive, setRingingAudioActive] = React.useState(false);
   const [voiceCurrentTime, setVoiceCurrentTime] = React.useState(0);
@@ -61,6 +64,7 @@ export const useFirstCallSequence = ({
   const voiceRef = React.useRef<HTMLAudioElement | null>(null);
   const endCallRef = React.useRef<HTMLAudioElement | null>(null);
   const previousResetTokenRef = React.useRef(resetToken);
+  const previousTriggerTokenRef = React.useRef(triggerToken);
   const uiTimersRef = React.useRef<number[]>([]);
 
   const clearUiTimers = React.useCallback(() => {
@@ -85,11 +89,11 @@ export const useFirstCallSequence = ({
     uiTimersRef.current.push(
       window.setTimeout(
         () => setObjectiveVisible(false),
-        FIRST_CALL_AUDIO_CONFIG.objectiveDurationMs
+        config.objectiveDurationMs
       ),
       window.setTimeout(() => setResumeHintVisible(false), 3200)
     );
-  }, [clearUiTimers]);
+  }, [clearUiTimers, config.objectiveDurationMs]);
 
   const reset = React.useCallback(() => {
     stopCallAudio();
@@ -124,9 +128,9 @@ export const useFirstCallSequence = ({
   }, [state]);
 
   React.useEffect(() => {
-    ringingRef.current = corridorAudioManager.getAudio(FIRST_CALL_AUDIO.ringingSrc);
-    voiceRef.current = corridorAudioManager.getAudio(FIRST_CALL_AUDIO.voiceSrc);
-    endCallRef.current = corridorAudioManager.getAudio(FIRST_CALL_AUDIO.endCallSrc);
+    ringingRef.current = corridorAudioManager.getAudio(config.audio.ringingSrc);
+    voiceRef.current = corridorAudioManager.getAudio(config.audio.voiceSrc);
+    endCallRef.current = corridorAudioManager.getAudio(config.audio.endCallSrc);
 
     ringingRef.current.preload = "auto";
     voiceRef.current.preload = "metadata";
@@ -137,7 +141,13 @@ export const useFirstCallSequence = ({
       clearUiTimers();
       stopCallAudio();
     };
-  }, [clearUiTimers, stopCallAudio]);
+  }, [
+    clearUiTimers,
+    config.audio.endCallSrc,
+    config.audio.ringingSrc,
+    config.audio.voiceSrc,
+    stopCallAudio,
+  ]);
 
   React.useEffect(() => {
     if (resetToken === previousResetTokenRef.current) return;
@@ -146,8 +156,19 @@ export const useFirstCallSequence = ({
   }, [reset, resetToken]);
 
   React.useEffect(() => {
+    if (triggerToken === previousTriggerTokenRef.current) return;
+    previousTriggerTokenRef.current = triggerToken;
+    triggerNow();
+  }, [triggerNow, triggerToken]);
+
+  React.useEffect(() => {
     if (!ready || state !== "idle") return;
     setState("scheduled");
+  }, [ready, state]);
+
+  React.useEffect(() => {
+    if (ready || state !== "scheduled") return;
+    setState("idle");
   }, [ready, state]);
 
   React.useEffect(() => {
@@ -160,13 +181,13 @@ export const useFirstCallSequence = ({
     const timer = window.setTimeout(() => {
       setTimerActive(false);
       setState("ringing");
-    }, FIRST_CALL_AUDIO_CONFIG.delayAfterControlMs);
+    }, config.delayAfterControlMs);
 
     return () => {
       window.clearTimeout(timer);
       setTimerActive(false);
     };
-  }, [state]);
+  }, [config.delayAfterControlMs, state]);
 
   React.useEffect(() => {
     if (state !== "ringing") return undefined;
@@ -177,12 +198,12 @@ export const useFirstCallSequence = ({
       document.exitPointerLock();
     }
     ringing.loop = true;
-    ringing.volume = FIRST_CALL_AUDIO_CONFIG.ringingVolume;
+    ringing.volume = config.ringingVolume;
     const handlePlaying = () => setRingingAudioActive(true);
     const handleError = () => {
       setRingingAudioActive(false);
       if (import.meta.env.DEV) {
-        console.warn("[First call] PhoneVibrating.wav could not be loaded.");
+        console.warn(`[${config.id}] Ringing audio could not be loaded.`);
       }
     };
     ringing.addEventListener("playing", handlePlaying);
@@ -191,7 +212,7 @@ export const useFirstCallSequence = ({
     void ringing.play().catch(() => {
       setRingingAudioActive(false);
       if (import.meta.env.DEV) {
-        console.warn("[First call] Ringing audio is waiting for audio unlock.");
+        console.warn(`[${config.id}] Ringing audio is waiting for audio unlock.`);
       }
     });
 
@@ -201,16 +222,16 @@ export const useFirstCallSequence = ({
       pauseAndReset(ringing);
       setRingingAudioActive(false);
     };
-  }, [audioUnlocked, state]);
+  }, [audioUnlocked, config.id, config.ringingVolume, state]);
 
   React.useEffect(() => {
     if (state !== "answering") return undefined;
     const timer = window.setTimeout(
       () => setState("playingMessage"),
-      FIRST_CALL_AUDIO_CONFIG.answerDelayMs
+      config.answerDelayMs
     );
     return () => window.clearTimeout(timer);
-  }, [state]);
+  }, [config.answerDelayMs, state]);
 
   React.useEffect(() => {
     if (state !== "playingMessage") return undefined;
@@ -222,7 +243,7 @@ export const useFirstCallSequence = ({
     }
 
     voice.loop = false;
-    voice.volume = FIRST_CALL_AUDIO_CONFIG.voiceVolume;
+    voice.volume = config.voiceVolume;
     voice.currentTime = 0;
 
     const updateMetadata = () => {
@@ -231,7 +252,7 @@ export const useFirstCallSequence = ({
     const updateTime = () => {
       const nextTime = voice.currentTime;
       setVoiceCurrentTime(nextTime);
-      const nextCue = FIRST_CALL_SUBTITLES.findIndex(
+      const nextCue = config.subtitles.findIndex(
         (cue) => nextTime >= cue.start && nextTime < cue.end
       );
       setCurrentCueIndex((current) => (current === nextCue ? current : nextCue));
@@ -246,7 +267,7 @@ export const useFirstCallSequence = ({
       setCurrentCueIndex(-1);
       setState("ending");
       if (import.meta.env.DEV) {
-        console.warn("[First call] FirstCall.mp3 could not be loaded.");
+        console.warn(`[${config.id}] Voice audio could not be loaded.`);
       }
     };
 
@@ -266,7 +287,7 @@ export const useFirstCallSequence = ({
       voice.removeEventListener("error", handleError);
       pauseAndReset(voice);
     };
-  }, [state]);
+  }, [config.id, config.subtitles, config.voiceVolume, state]);
 
   React.useEffect(() => {
     if (state !== "ending") return undefined;
@@ -286,16 +307,16 @@ export const useFirstCallSequence = ({
         return;
       }
       endCall.loop = false;
-      endCall.volume = FIRST_CALL_AUDIO_CONFIG.endCallVolume;
+      endCall.volume = config.endCallVolume;
       endCall.addEventListener("ended", complete, { once: true });
       endCall.addEventListener("error", complete, { once: true });
       startEndCallPlayback = () => {
         const startOffset = Number.isFinite(endCall.duration)
           ? Math.min(
-              FIRST_CALL_AUDIO_CONFIG.endCallStartOffsetSeconds,
+              config.endCallStartOffsetSeconds,
               Math.max(0, endCall.duration - 0.05)
             )
-          : FIRST_CALL_AUDIO_CONFIG.endCallStartOffsetSeconds;
+          : config.endCallStartOffsetSeconds;
         endCall.currentTime = startOffset;
         void endCall.play().catch(complete);
         fallbackTimer = window.setTimeout(
@@ -318,7 +339,7 @@ export const useFirstCallSequence = ({
 
     const delayTimer = window.setTimeout(
       playEndCall,
-      FIRST_CALL_AUDIO_CONFIG.endCallDelayMs
+      config.endCallDelayMs
     );
 
     return () => {
@@ -335,43 +356,27 @@ export const useFirstCallSequence = ({
       }
       pauseAndReset(endCall);
     };
-  }, [finishSequence, state]);
-
-  React.useEffect(() => {
-    if (!import.meta.env.DEV) return undefined;
-    const handleDebugKey = (event: KeyboardEvent) => {
-      if (event.key === "F7") {
-        event.preventDefault();
-        triggerNow();
-      }
-      if (event.key === "F8") {
-        event.preventDefault();
-        reset();
-      }
-      if (event.key === "F9") {
-        event.preventDefault();
-        if (state === "playingMessage" || state === "answering") {
-          setCurrentCueIndex(-1);
-          setState("ending");
-        }
-      }
-    };
-    window.addEventListener("keydown", handleDebugKey);
-    return () => window.removeEventListener("keydown", handleDebugKey);
-  }, [reset, state, triggerNow]);
+  }, [
+    config.endCallDelayMs,
+    config.endCallStartOffsetSeconds,
+    config.endCallVolume,
+    finishSequence,
+    state,
+  ]);
 
   // Only the drag-to-look input is suspended while the slider needs the pointer.
   // Keyboard/touch movement remains enabled by the corridor controller.
   const controlsSuspended = state === "ringing";
   const ambienceDuckFactor =
     state === "answering" || state === "playingMessage" || state === "ending"
-      ? FIRST_CALL_AUDIO_CONFIG.ambienceDuckFactor
+      ? config.ambienceDuckFactor
       : 1;
   const currentCue: SubtitleCue | null =
-    currentCueIndex >= 0 ? FIRST_CALL_SUBTITLES[currentCueIndex] : null;
+    currentCueIndex >= 0 ? config.subtitles[currentCueIndex] : null;
 
-  const runtime = React.useMemo<FirstCallRuntime>(
+  const runtime = React.useMemo<NarrativeCallRuntime>(
     () => ({
+      callId: config.id,
       state,
       timerActive,
       ringingAudioActive,
@@ -389,6 +394,7 @@ export const useFirstCallSequence = ({
     [
       ambienceDuckFactor,
       audioUnlocked,
+      config.id,
       controlsSuspended,
       currentCueIndex,
       error,
@@ -407,5 +413,6 @@ export const useFirstCallSequence = ({
     currentCue,
     answer,
     reset,
+    triggerNow,
   };
 };

@@ -29,6 +29,7 @@ interface MonsterPresenceControllerProps {
   onPlayerDamage?: () => void;
   playerDowned?: boolean;
   spawnCycleToken?: number;
+  narrativeEnabled?: boolean;
 }
 
 interface ResolvedMonsterSpawn {
@@ -294,6 +295,7 @@ export const MonsterPresenceController: React.FC<MonsterPresenceControllerProps>
   onPlayerDamage,
   playerDowned = false,
   spawnCycleToken = 0,
+  narrativeEnabled = true,
 }) => {
   const [spawnDelayComplete, setSpawnDelayComplete] = React.useState(false);
   const [runtimeSpawn, setRuntimeSpawn] =
@@ -343,7 +345,14 @@ export const MonsterPresenceController: React.FC<MonsterPresenceControllerProps>
     setSpawnDelayComplete(false);
     setRuntimeSpawn(null);
     hide();
-    if (!spawn || introPhase !== "playing" || playerDowned) return undefined;
+    if (
+      !spawn ||
+      !narrativeEnabled ||
+      introPhase !== "playing" ||
+      playerDowned
+    ) {
+      return undefined;
+    }
 
     const timer = window.setTimeout(() => {
       const currentPlayerPosition = playerPositionRef.current
@@ -381,6 +390,7 @@ export const MonsterPresenceController: React.FC<MonsterPresenceControllerProps>
     hide,
     introPhase,
     modules,
+    narrativeEnabled,
     playerDowned,
     playerPositionRef,
     show,
@@ -389,13 +399,13 @@ export const MonsterPresenceController: React.FC<MonsterPresenceControllerProps>
   ]);
 
   React.useEffect(() => {
-    if (!spawn) {
+    if (!spawn || !narrativeEnabled) {
       onDebugChange({
         ...EMPTY_MONSTER_DEBUG_STATE,
         state: "hidden",
       });
     }
-  }, [onDebugChange, spawn]);
+  }, [narrativeEnabled, onDebugChange, spawn]);
 
   React.useEffect(() => {
     if (!keyboardEnabled) return undefined;
@@ -411,7 +421,7 @@ export const MonsterPresenceController: React.FC<MonsterPresenceControllerProps>
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [keyboardEnabled, toggle]);
 
-  if (!spawn) return null;
+  if (!spawn || !narrativeEnabled) return null;
   const displayedSpawn = runtimeSpawn ?? spawn;
 
   return (

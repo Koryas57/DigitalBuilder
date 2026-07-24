@@ -1,17 +1,17 @@
 import React from "react";
 import { FiPhoneCall } from "react-icons/fi";
 import {
-  FIRST_CALL_OBJECTIVE,
-  FIRST_CALL_UI,
-  type FirstCallState,
-} from "../../../data/firstCallConfig";
+  type NarrativeCallConfig,
+  type NarrativeCallState,
+} from "../../../data/narrativeCallConfig";
 import type { SubtitleCue } from "../../../data/firstCallSubtitles";
 import { IncomingCallSlider } from "./IncomingCallSlider";
 import { CallSubtitles } from "./CallSubtitles";
 import { ObjectiveNotification } from "../objectives/ObjectiveNotification";
 
-interface FirstCallOverlayProps {
-  state: FirstCallState;
+interface NarrativeCallOverlayProps {
+  config: NarrativeCallConfig;
+  state: NarrativeCallState;
   cue: SubtitleCue | null;
   reducedMotion: boolean;
   objectiveVisible: boolean;
@@ -20,7 +20,8 @@ interface FirstCallOverlayProps {
   onAnswer: () => void;
 }
 
-export const FirstCallOverlay: React.FC<FirstCallOverlayProps> = ({
+export const NarrativeCallOverlay: React.FC<NarrativeCallOverlayProps> = ({
+  config,
   state,
   cue,
   reducedMotion,
@@ -56,18 +57,23 @@ export const FirstCallOverlay: React.FC<FirstCallOverlayProps> = ({
           <div className="first-call-panel__heading">
             <span>
               {state === "ringing"
-                ? FIRST_CALL_UI.incomingLabel
+                ? config.incomingLabel
                 : state === "ending"
-                  ? FIRST_CALL_UI.completedLabel
+                  ? config.completedLabel
                   : "APPEL EN COURS"}
             </span>
-            <strong>{FIRST_CALL_UI.caller}</strong>
+            <strong>{config.caller}</strong>
           </div>
           <div className="first-call-panel__phone" aria-hidden="true">
             <FiPhoneCall />
           </div>
 
-          {state === "ringing" && <IncomingCallSlider onAnswer={onAnswer} />}
+          {state === "ringing" && (
+            <IncomingCallSlider
+              slideHint={config.slideHint}
+              onAnswer={onAnswer}
+            />
+          )}
           {state === "answering" && (
             <p className="first-call-panel__status">Connexion…</p>
           )}
@@ -82,20 +88,25 @@ export const FirstCallOverlay: React.FC<FirstCallOverlayProps> = ({
         </section>
       )}
 
-      <CallSubtitles cue={state === "playingMessage" ? cue : null} />
-
-      <ObjectiveNotification
-        visible={objectiveVisible}
-        label={FIRST_CALL_OBJECTIVE.label}
-        text={FIRST_CALL_OBJECTIVE.text}
+      <CallSubtitles
+        caller={config.caller}
+        cue={state === "playingMessage" ? cue : null}
       />
+
+      {config.objective && (
+        <ObjectiveNotification
+          visible={objectiveVisible}
+          label={config.objective.label}
+          text={config.objective.text}
+        />
+      )}
 
       <div
         className={`first-call-resume-hint${resumeHintVisible ? " is-visible" : ""}`}
         role="status"
         aria-hidden={!resumeHintVisible}
       >
-        {FIRST_CALL_UI.resumeHint}
+        {config.resumeHint}
       </div>
     </div>
   );

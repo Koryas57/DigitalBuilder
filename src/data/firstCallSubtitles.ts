@@ -4,7 +4,7 @@ export type SubtitleCue = {
   text: string;
 };
 
-// Texte et timings provisoires. La durée réelle est lue depuis FirstCall.mp3
+// Texte et timings provisoires. La durée réelle est lue depuis FirstCall.wav
 // dans le navigateur et reste visible dans la console de debug.
 export const FIRST_CALL_SUBTITLES: SubtitleCue[] = [
   {

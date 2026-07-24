@@ -35,6 +35,7 @@ import { PlayerCapsuleCollider } from "./PlayerCapsuleCollider";
 import { corridorAudioManager } from "./audio/AudioManager";
 import { DEFAULT_BACKGROUND_VOLUME } from "./audio/useAmbienceAudio";
 import { DEFAULT_FOOTSTEP_VOLUME } from "./audio/useFootstepAudio";
+import { useWarpAudio } from "./audio/useWarpAudio";
 import {
   INITIAL_INTRO_RUNTIME_STATE,
   IntroManager,
@@ -48,9 +49,19 @@ import {
   PLAYING_CONTROL_STATE,
   type IntroCameraState,
 } from "./intro/introConfig";
-import { FIRST_CALL_AUDIO_CONFIG } from "../../../data/firstCallConfig";
-import { FirstCallController } from "../../corridor/call/FirstCallController";
-import type { FirstCallRuntime } from "../../../hooks/useFirstCallSequence";
+import {
+  FIRST_CALL_CONFIG,
+  SECOND_CALL_CONFIG,
+} from "../../../data/narrativeCallConfig";
+import { NarrativeCallController } from "../../corridor/call/NarrativeCallController";
+import type { NarrativeCallRuntime } from "../../../hooks/useNarrativeCallSequence";
+import {
+  CORRIDOR_NARRATIVE_CONFIG,
+  resolveWarpOutcome,
+  type CorridorNarrativePhase,
+  type MonsterLoopState,
+  type WarpOutcome,
+} from "../../../data/corridorNarrativeConfig";
 import {
   INITIAL_WARP_DEBUG_STATE,
   WARP_CONFIG,
@@ -58,6 +69,8 @@ import {
   type WarpState,
 } from "../../../data/warpConfig";
 import { MysticWarpPortal } from "./warp/MysticWarpPortal";
+import { WarpTransitionOverlay } from "./warp/WarpTransitionOverlay";
+import { useWarpTransition } from "./warp/useWarpTransition";
 
 interface CorridorGameExperienceProps {
   movementInput: { x: number; z: number };
@@ -69,6 +82,7 @@ interface CorridorGameExperienceProps {
 
 const initialDebug: CorridorPlayerDebugState = {
   position: PLAYER_SPAWN.position,
+  velocity: [0, 0, 0],
   rotation: PLAYER_SPAWN.rotation,
   nearestModuleId: null,
   collided: false,
@@ -82,7 +96,10 @@ const initialDebug: CorridorPlayerDebugState = {
   footstepStep: 0,
 };
 
-const INITIAL_FIRST_CALL_RUNTIME: FirstCallRuntime = {
+const createInitialCallRuntime = (
+  callId: NarrativeCallRuntime["callId"]
+): NarrativeCallRuntime => ({
+  callId,
   state: "idle",
   timerActive: false,
   ringingAudioActive: false,
@@ -96,7 +113,7 @@ const INITIAL_FIRST_CALL_RUNTIME: FirstCallRuntime = {
   objectiveVisible: false,
   resumeHintVisible: false,
   error: null,
-};
+});
 
 const CALL_INTERACTION_CONTROL_STATE = {
   ...PLAYING_CONTROL_STATE,
@@ -283,6 +300,7 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   onQuickMode,
   onBackToSelector,
 }) => {
+  const { playWarpTransition } = useWarpAudio();
   const [objects, setObjects] = useState<CorridorModule[]>([]);
   const [wallCollisionBounds, setWallCollisionBounds] = useState<CorridorBounds[]>([]);
   const [debug, setDebug] = useState<CorridorPlayerDebugState>(initialDebug);
@@ -290,6 +308,18 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   const [warpState, setWarpState] = useState<WarpState>("inactive");
   const [warpDebug, setWarpDebug] = useState<WarpDebugState>(INITIAL_WARP_DEBUG_STATE);
   const [warpTriggerDebugVisible, setWarpTriggerDebugVisible] = useState(false);
+  const [narrativePhase, setNarrativePhase] =
+    useState<CorridorNarrativePhase>("intro");
+  const [loopCount, setLoopCount] = useState(0);
+  const [resolvedWarpOutcome, setResolvedWarpOutcome] =
+    useState<WarpOutcome>("loopToSpawn");
+  const [monsterLoopState, setMonsterLoopState] =
+    useState<MonsterLoopState>("firstLoopActive");
+  const [warpCooldownUntil, setWarpCooldownUntil] = useState(0);
+  const [playerPositionBeforeWarp, setPlayerPositionBeforeWarp] =
+    useState<[number, number, number] | null>(null);
+  const [playerPositionAfterWarp, setPlayerPositionAfterWarp] =
+    useState<[number, number, number] | null>(null);
   const [overviewMode, setOverviewMode] = useState(false);
   const [materialOverrideEnabled, setMaterialOverrideEnabled] = useState(false);
   const [collisionDebugVisible, setCollisionDebugVisible] = useState(false);
@@ -317,18 +347,25 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   const [pauseMessageVisible, setPauseMessageVisible] = useState(false);
   const [debugConsoleVisible, setDebugConsoleVisible] = useState(false);
   const [restartToken, setRestartToken] = useState(0);
+  const [teleportToken, setTeleportToken] = useState(0);
+  const [secondCallResetToken, setSecondCallResetToken] = useState(0);
+  const [secondCallTriggerToken, setSecondCallTriggerToken] = useState(0);
   const [damageToken, setDamageToken] = useState(0);
   const [damageOverlayState, setDamageOverlayState] = useState<"hidden" | "active" | "fading">("hidden");
   const [playerHitCount, setPlayerHitCount] = useState(0);
   const [playerDowned, setPlayerDowned] = useState(false);
   const [recoveryToken, setRecoveryToken] = useState(0);
   const [monsterSpawnCycleToken, setMonsterSpawnCycleToken] = useState(0);
-  const [firstCallRuntime, setFirstCallRuntime] = useState<FirstCallRuntime>(
-    INITIAL_FIRST_CALL_RUNTIME
+  const [firstCallRuntime, setFirstCallRuntime] = useState<NarrativeCallRuntime>(
+    () => createInitialCallRuntime("first-call")
+  );
+  const [secondCallRuntime, setSecondCallRuntime] = useState<NarrativeCallRuntime>(
+    () => createInitialCallRuntime("second-call")
   );
   const playerPositionRef = useRef(new THREE.Vector3(...PLAYER_SPAWN.position));
   const damageAudioRef = useRef<HTMLAudioElement | null>(null);
   const damageFadeTimerRef = useRef<number | null>(null);
+  const warpCooldownTimerRef = useRef<number | null>(null);
   const corridorModules = React.useMemo(
     () => objects.filter((object) => (object.type ?? "corridor") === "corridor"),
     [objects]
@@ -376,15 +413,104 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   const unlockAudio = React.useCallback(() => {
     corridorAudioManager.unlock();
     corridorAudioManager.prime(INTRO_AUDIO.backgroundSrc);
+    corridorAudioManager.prime(WARP_CONFIG.audio.transitionSrc);
     setAudioUnlocked(true);
   }, []);
   const lightingPresetIndex = LIGHTING_PRESET_ORDER.indexOf(lightingPreset);
-  const firstCallSequenceActive = [
-    "ringing",
-    "answering",
-    "playingMessage",
-    "ending",
-  ].includes(firstCallRuntime.state);
+  const isCallInteractionActive = React.useCallback(
+    (runtime: NarrativeCallRuntime) =>
+      ["ringing", "answering", "playingMessage", "ending"].includes(
+        runtime.state
+      ),
+    []
+  );
+  const firstCallSequenceActive = isCallInteractionActive(firstCallRuntime);
+  const secondCallSequenceActive = isCallInteractionActive(secondCallRuntime);
+  const callSequenceActive =
+    firstCallSequenceActive || secondCallSequenceActive;
+  const callWaitingForAnswer =
+    firstCallRuntime.state === "ringing" ||
+    secondCallRuntime.state === "ringing";
+  const callDuckFactor = Math.min(
+    firstCallRuntime.ambienceDuckFactor,
+    secondCallRuntime.ambienceDuckFactor
+  );
+
+  const preparePlayerForLoopRestart = React.useCallback(() => {
+    if (damageFadeTimerRef.current !== null) {
+      window.clearTimeout(damageFadeTimerRef.current);
+      damageFadeTimerRef.current = null;
+    }
+    if (damageAudioRef.current) {
+      damageAudioRef.current.pause();
+      try {
+        damageAudioRef.current.currentTime = 0;
+      } catch {
+        // The damage audio may still be loading.
+      }
+      damageAudioRef.current = null;
+    }
+    setPlayerDowned(false);
+    setPlayerHitCount(0);
+    setDamageOverlayState((current) =>
+      current === "hidden" ? "hidden" : "fading"
+    );
+    setRecoveryToken((current) => current + 1);
+    damageFadeTimerRef.current = window.setTimeout(() => {
+      setDamageOverlayState("hidden");
+      damageFadeTimerRef.current = null;
+    }, reducedMotion ? 120 : 520);
+  }, [reducedMotion]);
+
+  const resetMonsterForNarrativeLoop = React.useCallback((loop: number) => {
+    setMonsterLoopState(loop >= 1 ? "secondLoopHidden" : "firstLoopActive");
+  }, []);
+
+  const performWarpTeleport = React.useCallback(() => {
+    preparePlayerForLoopRestart();
+    resetMonsterForNarrativeLoop(1);
+    setTeleportToken((current) => current + 1);
+  }, [preparePlayerForLoopRestart, resetMonsterForNarrativeLoop]);
+
+  const completeWarpTransition = React.useCallback(() => {
+    setWarpState("completed");
+    setLoopCount((current) => {
+      const next = current + 1;
+      setNarrativePhase(
+        next === 1 ? "secondCallPending" : "secondCallCompleted"
+      );
+      return next;
+    });
+
+    const cooldownUntil =
+      performance.now() + CORRIDOR_NARRATIVE_CONFIG.warpCooldownMs;
+    setWarpCooldownUntil(cooldownUntil);
+    if (warpCooldownTimerRef.current !== null) {
+      window.clearTimeout(warpCooldownTimerRef.current);
+    }
+    warpCooldownTimerRef.current = window.setTimeout(() => {
+      setWarpState("available");
+      setWarpCooldownUntil(0);
+      warpCooldownTimerRef.current = null;
+    }, CORRIDOR_NARRATIVE_CONFIG.warpCooldownMs);
+  }, []);
+
+  const warpTransition = useWarpTransition({
+    reducedMotion,
+    onTeleport: performWarpTeleport,
+    onCompleted: completeWarpTransition,
+  });
+
+  const warpAmbienceFactor =
+    warpTransition.state === "entering"
+      ? CORRIDOR_NARRATIVE_CONFIG.warpAmbienceFactor.entering
+      : warpTransition.state === "fadingOut"
+        ? CORRIDOR_NARRATIVE_CONFIG.warpAmbienceFactor.fadingOut
+        : warpTransition.state === "teleporting"
+          ? CORRIDOR_NARRATIVE_CONFIG.warpAmbienceFactor.teleporting
+          : warpTransition.state === "fadingIn"
+            ? CORRIDOR_NARRATIVE_CONFIG.warpAmbienceFactor.fadingIn
+            : 1;
   const introBackgroundFactor = introState.ambienceReady
     ? 1
     : INTRO_AUDIO.backgroundUnderIntroFactor;
@@ -393,37 +519,79 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
       ? backgroundVolume *
         0.56 *
         introBackgroundFactor *
-        firstCallRuntime.ambienceDuckFactor
+        callDuckFactor *
+        warpAmbienceFactor
       : backgroundVolume *
         introBackgroundFactor *
-        firstCallRuntime.ambienceDuckFactor;
+        callDuckFactor *
+        warpAmbienceFactor;
   const effectiveControlState =
-    pauseOpen || playerDowned
+    pauseOpen || playerDowned || warpTransition.active
       ? LOCKED_CONTROL_STATE
-      : firstCallRuntime.state === "ringing"
+      : callWaitingForAnswer
         ? CALL_INTERACTION_CONTROL_STATE
         : introState.controlState;
   const handleRestart = React.useCallback(() => {
+    warpTransition.reset();
+    if (warpCooldownTimerRef.current !== null) {
+      window.clearTimeout(warpCooldownTimerRef.current);
+      warpCooldownTimerRef.current = null;
+    }
     setRestartToken((current) => current + 1);
+    setSecondCallResetToken((current) => current + 1);
     setPlayerMoved(false);
     setDamageOverlayState("hidden");
     setPlayerHitCount(0);
     setPlayerDowned(false);
     setRecoveryToken((current) => current + 1);
     setMonsterSpawnCycleToken((current) => current + 1);
-    setWarpState(objects.length ? "available" : "inactive");
+    setNarrativePhase(
+      introState.phase === "playing" ? "firstCallPending" : "intro"
+    );
+    setLoopCount(0);
+    setResolvedWarpOutcome("loopToSpawn");
+    resetMonsterForNarrativeLoop(0);
+    setWarpCooldownUntil(0);
+    setPlayerPositionBeforeWarp(null);
+    setPlayerPositionAfterWarp(null);
+    setWarpState("inactive");
     setWarpDebug((current) => ({
       ...current,
-      state: objects.length ? "available" : "inactive",
-      triggerActive: objects.length > 0,
+      state: "inactive",
+      triggerActive: false,
       playerInsideTrigger: false,
     }));
     setPauseOpen(false);
-  }, [objects.length]);
-  const handleWarpEnter = React.useCallback(() => {
+  }, [introState.phase, resetMonsterForNarrativeLoop, warpTransition]);
+  const handleWarpEnter = React.useCallback((force = false) => {
+    if (
+      (!force && warpState !== "available") ||
+      warpTransition.active ||
+      performance.now() < warpCooldownUntil
+    ) {
+      return;
+    }
+    const outcome = resolveWarpOutcome(narrativePhase);
+    if (outcome !== "loopToSpawn" || !warpTransition.start()) return;
+
     console.info("[Mystic warp] player entered trigger");
-    setWarpState((current) => (current === "available" ? "entered" : current));
-  }, []);
+    playWarpTransition();
+    setResolvedWarpOutcome(outcome);
+    setPlayerPositionBeforeWarp([
+      Number(playerPositionRef.current.x.toFixed(3)),
+      Number(playerPositionRef.current.y.toFixed(3)),
+      Number(playerPositionRef.current.z.toFixed(3)),
+    ]);
+    setPlayerPositionAfterWarp(null);
+    setNarrativePhase("firstWarpTransition");
+    setWarpState("entered");
+  }, [
+    narrativePhase,
+    playWarpTransition,
+    warpCooldownUntil,
+    warpState,
+    warpTransition,
+  ]);
   const handlePlayerDamage = React.useCallback(() => {
     if (playerDowned) return;
     setDamageToken((current) => current + 1);
@@ -487,6 +655,70 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
     }, 1400);
   }, []);
 
+  const handleFirstCallRuntimeChange = React.useCallback(
+    (runtime: NarrativeCallRuntime) => {
+      setFirstCallRuntime(runtime);
+      if (
+        runtime.state === "ringing" ||
+        runtime.state === "answering" ||
+        runtime.state === "playingMessage" ||
+        runtime.state === "ending"
+      ) {
+        setNarrativePhase((current) =>
+          current === "firstCallPending" ? "firstCallPlaying" : current
+        );
+      }
+      if (runtime.completed && loopCount === 0) {
+        setNarrativePhase((current) =>
+          current === "firstWarpTransition" ? current : "firstWarpAvailable"
+        );
+        setWarpState((current) =>
+          current === "entered" ? current : "available"
+        );
+      }
+    },
+    [loopCount]
+  );
+
+  const handleSecondCallRuntimeChange = React.useCallback(
+    (runtime: NarrativeCallRuntime) => {
+      setSecondCallRuntime(runtime);
+      if (
+        runtime.state === "ringing" ||
+        runtime.state === "answering" ||
+        runtime.state === "playingMessage" ||
+        runtime.state === "ending"
+      ) {
+        setNarrativePhase("secondCallPlaying");
+      }
+      if (runtime.completed) {
+        setNarrativePhase("secondCallCompleted");
+      }
+    },
+    []
+  );
+
+  const secondCallReady =
+    loopCount === 1 &&
+    narrativePhase === "secondCallPending" &&
+    introState.phase === "playing" &&
+    audioUnlocked &&
+    !pauseOpen &&
+    !playerDowned &&
+    !warpTransition.active;
+  const activeCallId =
+    secondCallRuntime.state !== "idle" &&
+    secondCallRuntime.state !== "completed"
+      ? secondCallRuntime.callId
+      : firstCallRuntime.state !== "idle" &&
+          firstCallRuntime.state !== "completed"
+        ? firstCallRuntime.callId
+        : "none";
+  const warpTriggerLocked =
+    warpState !== "available" ||
+    warpTransition.active ||
+    performance.now() < warpCooldownUntil;
+
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === "m") {
@@ -513,6 +745,32 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
       if (event.key === "F3") {
         event.preventDefault();
         setDebugConsoleVisible((current) => !current);
+      }
+      if (import.meta.env.DEV && event.key === "F6") {
+        event.preventDefault();
+        handleWarpEnter(true);
+      }
+      if (import.meta.env.DEV && event.key === "F7") {
+        event.preventDefault();
+        setPlayerPositionBeforeWarp([
+          Number(playerPositionRef.current.x.toFixed(3)),
+          Number(playerPositionRef.current.y.toFixed(3)),
+          Number(playerPositionRef.current.z.toFixed(3)),
+        ]);
+        setPlayerPositionAfterWarp(null);
+        performWarpTeleport();
+      }
+      if (import.meta.env.DEV && event.key === "F8") {
+        event.preventDefault();
+        setSecondCallTriggerToken((current) => current + 1);
+        setNarrativePhase("secondCallPlaying");
+      }
+      if (import.meta.env.DEV && event.key === "F9") {
+        event.preventDefault();
+        setSecondCallResetToken((current) => current + 1);
+        setNarrativePhase(
+          loopCount >= 1 ? "secondCallPending" : "firstCallPending"
+        );
       }
       if (
         import.meta.env.DEV &&
@@ -541,12 +799,21 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [audioUnlocked, introState.phase, unlockAudio]);
+  }, [
+    audioUnlocked,
+    handleWarpEnter,
+    introState.phase,
+    loopCount,
+    performWarpTeleport,
+    unlockAudio,
+  ]);
 
   React.useEffect(() => {
-    if (!objects.length) return;
-    setWarpState((current) => (current === "inactive" ? "available" : current));
-  }, [objects.length]);
+    if (introState.phase !== "playing") return;
+    setNarrativePhase((current) =>
+      current === "intro" ? "firstCallPending" : current
+    );
+  }, [introState.phase]);
 
   React.useEffect(() => {
     if (!pauseOpen) {
@@ -564,6 +831,7 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   React.useEffect(
     () => () => {
       if (damageFadeTimerRef.current !== null) window.clearTimeout(damageFadeTimerRef.current);
+      if (warpCooldownTimerRef.current !== null) window.clearTimeout(warpCooldownTimerRef.current);
       damageAudioRef.current?.pause();
       damageAudioRef.current = null;
     },
@@ -668,10 +936,12 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
             backgroundVolumeTransitionMs={
               introState.ambienceReady && !introState.introAudioFinished
                 ? INTRO_AUDIO.backgroundCrossfadeMs
-                : FIRST_CALL_AUDIO_CONFIG.fadeDurationMs
+                : FIRST_CALL_CONFIG.fadeDurationMs
             }
             onPlayerMoved={() => setPlayerMoved(true)}
             restartToken={restartToken}
+            teleportToken={teleportToken}
+            onTeleportComplete={setPlayerPositionAfterWarp}
             footstepVolume={footstepVolume}
             backgroundVolume={effectiveBackgroundVolume}
             onFootstepVolumeChange={setFootstepVolume}
@@ -688,16 +958,20 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
             active={
               introState.phase === "playing" &&
               !pauseOpen &&
-              !firstCallSequenceActive
+              !callSequenceActive
             }
             onDebugChange={setMonsterDebug}
             onPlayerDamage={handlePlayerDamage}
             playerDowned={playerDowned}
             spawnCycleToken={monsterSpawnCycleToken}
+            narrativeEnabled={monsterLoopState === "firstLoopActive"}
           />
           <MysticWarpPortal
             playerPositionRef={playerPositionRef}
             state={warpState}
+            audioEnabled={
+              audioUnlocked && !pauseOpen && !warpTransition.active
+            }
             triggerDebugVisible={import.meta.env.DEV && warpTriggerDebugVisible}
             onEnter={handleWarpEnter}
             onDebugChange={setWarpDebug}
@@ -724,9 +998,14 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         )}
       </Canvas>
 
-      {debugConsoleVisible && warpState === "entered" && (
+      <WarpTransitionOverlay
+        state={warpTransition.state}
+        reducedMotion={reducedMotion}
+      />
+
+      {debugConsoleVisible && warpTransition.active && (
         <div className="developer-r3f-portal-message">
-          Zone du portail détectée
+          Transition du portail
         </div>
       )}
 
@@ -763,20 +1042,35 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         onCameraStateChange={setIntroCameraState}
       />
 
-      <FirstCallController
+      <NarrativeCallController
+        key={`first-call-${restartToken}`}
+        config={FIRST_CALL_CONFIG}
         ready={
           introState.phase === "playing" &&
-          audioUnlocked
+          audioUnlocked &&
+          loopCount === 0
         }
         audioUnlocked={audioUnlocked}
         reducedMotion={reducedMotion}
         resetToken={restartToken}
-        onRuntimeChange={setFirstCallRuntime}
+        onRuntimeChange={handleFirstCallRuntimeChange}
+      />
+
+      <NarrativeCallController
+        key={`second-call-${secondCallResetToken}`}
+        config={SECOND_CALL_CONFIG}
+        ready={secondCallReady}
+        audioUnlocked={audioUnlocked}
+        reducedMotion={reducedMotion}
+        resetToken={secondCallResetToken}
+        triggerToken={secondCallTriggerToken}
+        onRuntimeChange={handleSecondCallRuntimeChange}
       />
 
       {introState.phase === "playing" &&
         !pauseOpen &&
-        !firstCallSequenceActive && (
+        !callSequenceActive &&
+        !warpTransition.active && (
         <button
           className="developer-r3f-pause-trigger"
           type="button"
@@ -880,6 +1174,7 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         <div className="developer-r3f-debug">
           <strong>Debug Console</strong>
           <span>Position: {debug.position.join(", ")}</span>
+          <span>Velocity: {debug.velocity.join(", ")}</span>
           <span>Rotation: {debug.rotation}</span>
           <span>Module proche: {debug.nearestModuleId ?? "none"}</span>
           <span>Collision: {debug.collided ? "yes" : "no"}</span>
@@ -907,12 +1202,34 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
           <span>Spawn presets: 1 / 2 / 3</span>
           <span>FPS: {debug.fps}</span>
           <span>Warp state: {warpDebug.state}</span>
+          <span>Warp transition: {warpTransition.state}</span>
+          <span>Warp outcome: {resolvedWarpOutcome}</span>
+          <span>Warp trigger locked: {warpTriggerLocked ? "yes" : "no"}</span>
+          <span>
+            Warp cooldown:{" "}
+            {Math.max(0, warpCooldownUntil - performance.now()).toFixed(0)} ms
+          </span>
           <span>Warp distance: {warpDebug.distance.toFixed(2)} m</span>
           <span>Warp trigger active: {warpDebug.triggerActive ? "yes" : "no"}</span>
           <span>Warp position: {warpDebug.position.join(", ")}</span>
           <span>Warp intensity: {warpDebug.intensity.toFixed(2)}</span>
           <span>Player inside warp: {warpDebug.playerInsideTrigger ? "yes" : "no"}</span>
           <span>Warp trigger helper: {warpTriggerDebugVisible ? "on" : "off"} / {WARP_CONFIG.debugToggleKey.toUpperCase()}</span>
+          <span>Narrative phase: {narrativePhase}</span>
+          <span>Loop count: {loopCount}</span>
+          <span>
+            Player before warp: {playerPositionBeforeWarp?.join(", ") ?? "none"}
+          </span>
+          <span>
+            Player after warp: {playerPositionAfterWarp?.join(", ") ?? "none"}
+          </span>
+          <span>Active call ID: {activeCallId}</span>
+          <span>
+            Second call scheduled: {secondCallRuntime.state === "scheduled" ? "yes" : "no"}
+          </span>
+          <span>Second call state: {secondCallRuntime.state}</span>
+          <span>Monster loop state: {monsterLoopState}</span>
+          <span>Warp debug: F6 enter / F7 spawn / F8 second call / F9 reset second</span>
           <span>Player hits: {playerHitCount}</span>
           <span>Player downed: {playerDowned ? "yes" : "no"}</span>
           <span>Experience phase: {introState.phase}</span>

@@ -30,6 +30,18 @@ export const WARP_CONFIG = {
   triggerSize: [2, 3, 1.5] as [number, number, number],
   desktopParticleCount: 20,
   mobileParticleCount: 10,
+  audio: {
+    transitionSrc: "/assets/audio/warpsound.mp3",
+    transitionVolume: 0.9,
+    transitionStartOffsetSeconds: 2,
+    ambienceSrc: "/assets/audio/warpwhisper.mp3",
+    ambienceRadius: 15,
+    ambienceMaxVolume: 0.62,
+    ambienceDistanceCurve: 1.35,
+    ambienceFadeSpeed: 2.8,
+    loopTrimEndSeconds: 6,
+    loopFadeSeconds: 0.85,
+  },
   debugToggleKey: "p",
 } as const;
 

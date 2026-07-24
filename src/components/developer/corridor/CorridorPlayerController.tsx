@@ -31,6 +31,7 @@ import {
 
 export interface CorridorPlayerDebugState {
   position: [number, number, number];
+  velocity: [number, number, number];
   rotation: number;
   nearestModuleId: string | null;
   collided: boolean;
@@ -63,6 +64,8 @@ interface CorridorPlayerControllerProps {
   backgroundVolumeTransitionMs?: number;
   onPlayerMoved?: () => void;
   restartToken?: number;
+  teleportToken?: number;
+  onTeleportComplete?: (position: [number, number, number]) => void;
   footstepVolume: number;
   backgroundVolume: number;
   onFootstepVolumeChange: React.Dispatch<React.SetStateAction<number>>;
@@ -107,6 +110,8 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
   backgroundVolumeTransitionMs = 0,
   onPlayerMoved,
   restartToken = 0,
+  teleportToken = 0,
+  onTeleportComplete,
   footstepVolume,
   backgroundVolume,
   onFootstepVolumeChange,
@@ -131,6 +136,7 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
   const wasMovingRef = useRef(false);
   const lastFootstepTimeRef = useRef(0);
   const lastRestartTokenRef = useRef(restartToken);
+  const lastTeleportTokenRef = useRef(teleportToken);
   const lastRecoveryTokenRef = useRef(recoveryToken);
   const damageShakeUntilRef = useRef(0);
   const lastDamageImpulseTokenRef = useRef(damageImpulseToken);
@@ -160,12 +166,20 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
       : resolveCorridorCollision(spawnPosition, spawnPosition, bounds).position;
 
     activeSpawnIndexRef.current = presetIndex;
+    keysRef.current = {};
+    dragRef.current = false;
     positionRef.current.copy(resolvedSpawn);
     velocityRef.current.set(0, 0, 0);
     yawRef.current = preset.rotation;
     pitchRef.current = 0;
+    previousFootPhaseRef.current = 0;
+    wasMovingRef.current = false;
+    lastFootstepTimeRef.current = 0;
+    damageShakeUntilRef.current = 0;
+    setSprintingState(false);
     camera.position.copy(positionRef.current);
     camera.rotation.set(0, yawRef.current, 0, "YXZ");
+    setPerspectiveFov(camera, BASE_FOV);
     playerPositionRef.current.copy(positionRef.current);
     console.info("[Corridor spawn]", {
       preset: preset.name,
@@ -185,6 +199,39 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
     lastRestartTokenRef.current = restartToken;
     resetToSpawn(0);
   }, [restartToken, resetToSpawn]);
+
+  useEffect(() => {
+    if (teleportToken === lastTeleportTokenRef.current) return;
+    lastTeleportTokenRef.current = teleportToken;
+    lastLookRef.current = lookInput;
+    resetToSpawn(0);
+    onTeleportComplete?.(roundVector(positionRef.current));
+    onDebugChange({
+      position: roundVector(positionRef.current),
+      velocity: [0, 0, 0],
+      rotation: Number(yawRef.current.toFixed(3)),
+      nearestModuleId: findNearestModuleId(positionRef.current, bounds),
+      collided: false,
+      fps: frameStatsRef.current.fps,
+      speed: 0,
+      sprinting: false,
+      grounded: true,
+      collisionEnabled: !DEBUG_DISABLE_COLLISIONS,
+      footstepVolume,
+      backgroundVolume,
+      footstepStep,
+    });
+  }, [
+    backgroundVolume,
+    bounds,
+    footstepStep,
+    footstepVolume,
+    lookInput,
+    onDebugChange,
+    onTeleportComplete,
+    resetToSpawn,
+    teleportToken,
+  ]);
 
   useEffect(() => {
     if (recoveryToken === lastRecoveryTokenRef.current) return;
@@ -528,6 +575,7 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
 
       onDebugChange({
         position: roundVector(positionRef.current),
+        velocity: roundVector(velocityRef.current),
         rotation: Number(yawRef.current.toFixed(3)),
         nearestModuleId: collision.nearestModuleId,
         collided: collidedRef.current,
