@@ -20,7 +20,12 @@ export interface IntroRuntimeState {
   neonPlayed: boolean;
   introAudioFinished: boolean;
   ambienceReady: boolean;
-  backgroundAudioState: "locked" | "waiting" | "fade-in" | "playing";
+  backgroundAudioState:
+    | "locked"
+    | "waiting"
+    | "under-intro"
+    | "fade-in"
+    | "playing";
   controlState: PlayerControlState;
 }
 
@@ -117,7 +122,9 @@ export const IntroManager: React.FC<IntroManagerProps> = ({
           ? sequence.introAudioFinished
             ? "playing"
             : "fade-in"
-          : "waiting",
+          : sequence.neonPlayed
+            ? "under-intro"
+            : "waiting",
       controlState: sequence.controlState,
     });
   }, [

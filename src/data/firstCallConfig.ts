@@ -9,7 +9,7 @@ export type FirstCallState =
 
 export const FIRST_CALL_AUDIO = {
   ringingSrc: "/assets/audio/PhoneVibrating.wav",
-  voiceSrc: "/assets/audio/FirstCall.mp3",
+  voiceSrc: "/assets/audio/FirstCall.wav",
   endCallSrc: "/assets/audio/EndCall.mp3",
 };
 

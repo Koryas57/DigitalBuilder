@@ -1,5 +1,5 @@
 import React, { Suspense, useRef, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import {
@@ -208,6 +208,67 @@ const OverviewCamera: React.FC<{ enabled: boolean; target: THREE.Vector3 }> = ({
   return null;
 };
 
+const createOrbitalArrow = (color: THREE.ColorRepresentation) => {
+  const arrow = new THREE.ArrowHelper(
+    new THREE.Vector3(0, -1, 0),
+    new THREE.Vector3(),
+    2.7,
+    color,
+    0.72,
+    0.46
+  );
+  const lineMaterial = arrow.line.material as THREE.LineBasicMaterial;
+  const coneMaterial = arrow.cone.material as THREE.MeshBasicMaterial;
+  lineMaterial.depthTest = false;
+  coneMaterial.depthTest = false;
+  arrow.line.renderOrder = 100;
+  arrow.cone.renderOrder = 100;
+  arrow.line.frustumCulled = false;
+  arrow.cone.frustumCulled = false;
+  return arrow;
+};
+
+const OrbitalPositionMarkers: React.FC<{
+  playerPositionRef: React.MutableRefObject<THREE.Vector3>;
+  monsterPosition: [number, number, number];
+  monsterVisible: boolean;
+}> = ({ playerPositionRef, monsterPosition, monsterVisible }) => {
+  const playerArrow = React.useMemo(() => createOrbitalArrow("#28e86f"), []);
+  const monsterArrow = React.useMemo(() => createOrbitalArrow("#ff2d2d"), []);
+
+  useFrame(() => {
+    const playerPosition = playerPositionRef.current;
+    playerArrow.position.set(playerPosition.x, playerPosition.y + 3.35, playerPosition.z);
+    monsterArrow.position.set(
+      monsterPosition[0],
+      monsterPosition[1] + 3.35,
+      monsterPosition[2]
+    );
+    monsterArrow.visible = monsterVisible;
+  });
+
+  React.useEffect(
+    () => () => {
+      playerArrow.line.geometry.dispose();
+      playerArrow.cone.geometry.dispose();
+      monsterArrow.line.geometry.dispose();
+      monsterArrow.cone.geometry.dispose();
+      (playerArrow.line.material as THREE.Material).dispose();
+      (playerArrow.cone.material as THREE.Material).dispose();
+      (monsterArrow.line.material as THREE.Material).dispose();
+      (monsterArrow.cone.material as THREE.Material).dispose();
+    },
+    [monsterArrow, playerArrow]
+  );
+
+  return (
+    <>
+      <primitive object={playerArrow} />
+      <primitive object={monsterArrow} />
+    </>
+  );
+};
+
 export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   movementInput,
   lookInput,
@@ -305,6 +366,7 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   );
   const unlockAudio = React.useCallback(() => {
     corridorAudioManager.unlock();
+    corridorAudioManager.prime(INTRO_AUDIO.backgroundSrc);
     setAudioUnlocked(true);
   }, []);
   const lightingPresetIndex = LIGHTING_PRESET_ORDER.indexOf(lightingPreset);
@@ -314,10 +376,18 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
     "playingMessage",
     "ending",
   ].includes(firstCallRuntime.state);
+  const introBackgroundFactor = introState.ambienceReady
+    ? 1
+    : INTRO_AUDIO.backgroundUnderIntroFactor;
   const effectiveBackgroundVolume =
     damageOverlayState !== "hidden" || playerDowned
-      ? backgroundVolume * 0.56 * firstCallRuntime.ambienceDuckFactor
-      : backgroundVolume * firstCallRuntime.ambienceDuckFactor;
+      ? backgroundVolume *
+        0.56 *
+        introBackgroundFactor *
+        firstCallRuntime.ambienceDuckFactor
+      : backgroundVolume *
+        introBackgroundFactor *
+        firstCallRuntime.ambienceDuckFactor;
   const effectiveControlState =
     pauseOpen || playerDowned
       ? LOCKED_CONTROL_STATE
@@ -560,13 +630,17 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
             spawnConfig={spawnConfig}
             collisionBounds={bounds}
             ambienceEnabled={
-              audioUnlocked && introState.ambienceReady
+              audioUnlocked && introState.neonPlayed
             }
             controlState={effectiveControlState}
             introCameraState={introCameraState}
             backgroundFadeInMs={INTRO_AUDIO.backgroundFadeInMs}
             backgroundStartDelayMs={INTRO_AUDIO.backgroundStartDelayMs}
-            backgroundVolumeTransitionMs={FIRST_CALL_AUDIO_CONFIG.fadeDurationMs}
+            backgroundVolumeTransitionMs={
+              introState.ambienceReady && !introState.introAudioFinished
+                ? INTRO_AUDIO.backgroundCrossfadeMs
+                : FIRST_CALL_AUDIO_CONFIG.fadeDurationMs
+            }
             onPlayerMoved={() => setPlayerMoved(true)}
             restartToken={restartToken}
             footstepVolume={footstepVolume}
@@ -597,6 +671,11 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         {overviewMode && (
           <>
             <OverviewCamera enabled={overviewMode} target={mapCenter} />
+            <OrbitalPositionMarkers
+              playerPositionRef={playerPositionRef}
+              monsterPosition={monsterDebug.position}
+              monsterVisible={monsterDebug.visible && monsterDebug.loaded}
+            />
             <OrbitControls
               makeDefault
               target={mapCenter.toArray()}
@@ -826,6 +905,13 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
           <span>Monster state: {monsterDebug.state}</span>
           <span>Monster AI: {monsterDebug.aiMode}</span>
           <span>Monster blocked: {monsterDebug.blocked ? "yes" : "no"}</span>
+          <span>
+            Monster speed: {monsterDebug.measuredSpeed.toFixed(3)} /{" "}
+            {monsterDebug.expectedSpeed.toFixed(3)}
+          </span>
+          <span>Monster progress ratio: {monsterDebug.movementRatio.toFixed(2)}</span>
+          <span>Monster unstuck left turns: {monsterDebug.unstuckTurns}</span>
+          <span>Monster distance since idle: {monsterDebug.distanceSinceIdle.toFixed(2)}</span>
           <span>Monster player dist: {monsterDebug.playerDistance ?? "none"}</span>
           <span>Monster path: {monsterDebug.assetPath}</span>
           <span>Monster anim: {monsterDebug.currentAnimation ?? "none"}</span>

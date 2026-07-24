@@ -62,6 +62,11 @@ export interface MonsterDebugState {
   aiMode: string;
   playerDistance: number | null;
   blocked: boolean;
+  measuredSpeed: number;
+  expectedSpeed: number;
+  movementRatio: number;
+  unstuckTurns: number;
+  distanceSinceIdle: number;
   error: string | null;
 }
 
@@ -95,22 +100,29 @@ export const MONSTER_MUTANT_CONFIG = {
     runSpeed: 1.72,
     collisionRadius: 0.24,
     turnSpeed: 6.2,
-    detectionRadius: 8.5,
+    detectionRadius: 15,
     detectionConeDot: -0.12,
     attackDistance: 1.15,
     attackCooldownMs: 860,
     rageDurationMs: 1250,
     idleMinMs: 1700,
     idleMaxMs: 3600,
+    minimumTravelBeforeIdle: 3,
     loseSightDistance: 12,
     loseSightGraceMs: 1700,
     chaseBurstMs: 2800,
     recoveryMs: 1500,
     scanDistance: 1.55,
     turnDecisionCooldownMs: 260,
-    blockedAfterMs: 360,
+    junctionDecisionCooldownMs: 3200,
+    junctionMinimumTravel: 2.2,
+    blockedAfterMs: 1000,
     movementEpsilon: 0.028,
-    spawnDelayMs: 71000,
+    minimumMovementRatio: 0.38,
+    unstuckTurnStepRadians: Math.PI / 4,
+    unstuckRetryMs: 1000,
+    spawnDelayMs: 61000,
+    spawnMinPlayerDistance: 5.5,
     maxAttackCount: 12,
   },
   audio: {
@@ -124,7 +136,7 @@ export const MONSTER_MUTANT_CONFIG = {
     rageVolume: 0.92,
     hitVolume: 0.95,
     nearDistance: 1.2,
-    audibleDistance: 6.5,
+    audibleDistance: 25,
     idleCooldownMs: 11000,
     walkCooldownMs: 8500,
   },
@@ -156,5 +168,10 @@ export const EMPTY_MONSTER_DEBUG_STATE: MonsterDebugState = {
   aiMode: "hidden",
   playerDistance: null,
   blocked: false,
+  measuredSpeed: 0,
+  expectedSpeed: 0,
+  movementRatio: 1,
+  unstuckTurns: 0,
+  distanceSinceIdle: 0,
   error: null,
 };

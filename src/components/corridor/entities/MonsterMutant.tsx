@@ -17,6 +17,7 @@ import {
   type CorridorBounds,
 } from "../../developer/corridor/CorridorCollisionSystem";
 import { PLAYER_HEIGHT } from "../../developer/corridor/CorridorSpawn";
+import type { MonsterNavigationArea } from "./MonsterPresenceController";
 
 interface MonsterMutantProps {
   visible: boolean;
@@ -28,6 +29,7 @@ interface MonsterMutantProps {
   active: boolean;
   playerPositionRef: React.MutableRefObject<THREE.Vector3>;
   collisionBounds: CorridorBounds[];
+  navigationAreas: MonsterNavigationArea[];
   state: MonsterPresenceState;
   onDebugChange: (debug: MonsterDebugState) => void;
   onPlayerDamage?: () => void;
@@ -51,6 +53,22 @@ const yawFromDirection = (direction: THREE.Vector3) =>
   Math.atan2(-direction.x, -direction.z);
 
 const normalizeYawDelta = (delta: number) => Math.atan2(Math.sin(delta), Math.cos(delta));
+
+const isInsideMonsterNavigation = (
+  position: THREE.Vector3,
+  areas: MonsterNavigationArea[]
+) => {
+  if (!areas.length) return true;
+  const tolerance = 0.08;
+
+  return areas.some(
+    (area) =>
+      position.x >= area.minX - tolerance &&
+      position.x <= area.maxX + tolerance &&
+      position.z >= area.minZ - tolerance &&
+      position.z <= area.maxZ + tolerance
+  );
+};
 
 const sampleClearance = (
   from: THREE.Vector3,
@@ -112,25 +130,23 @@ const chooseOpenYaw = (
   bounds: CorridorBounds[]
 ) => {
   const candidates = [
-    0,
-    Math.PI * 0.18,
-    -Math.PI * 0.18,
+    Math.PI * 0.25,
+    -Math.PI * 0.25,
     Math.PI * 0.5,
     -Math.PI * 0.5,
-    Math.PI * 0.72,
-    -Math.PI * 0.72,
-    Math.PI,
-  ];
-
-  return candidates
+  ]
     .map((offset) => {
       const yaw = currentYaw + offset;
       return {
         yaw,
-        clearance: sampleClearance(position, yaw, bounds, 2.35) - Math.abs(offset) * 0.12,
+        clearance: sampleClearance(position, yaw, bounds, 2.35),
+        score: sampleClearance(position, yaw, bounds, 2.35) - Math.abs(offset) * 0.12,
       };
     })
-    .sort((left, right) => right.clearance - left.clearance)[0]?.yaw ?? currentYaw + Math.PI;
+    .filter((candidate) => candidate.clearance >= 0.85)
+    .sort((left, right) => right.score - left.score);
+
+  return candidates[0]?.yaw ?? currentYaw + Math.PI;
 };
 
 const chooseAvoidanceYaw = (
@@ -171,6 +187,7 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
   active,
   playerPositionRef,
   collisionBounds,
+  navigationAreas,
   state,
   onDebugChange,
   onPlayerDamage,
@@ -188,6 +205,7 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
     MONSTER_MUTANT_CONFIG.debug
   );
   const positionRef = React.useRef(new THREE.Vector3(...position));
+  const lastValidPositionRef = React.useRef(new THREE.Vector3(...position));
   const yawRef = React.useRef(rotationY);
   const targetYawRef = React.useRef(rotationY);
   const aiModeRef = React.useRef<MonsterPresenceState>("waiting");
@@ -210,6 +228,18 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
   });
   const lastMoveCheckAtRef = React.useRef(0);
   const lastMoveCheckPositionRef = React.useRef(new THREE.Vector3(...position));
+  const unstuckActiveRef = React.useRef(false);
+  const unstuckTargetYawRef = React.useRef(rotationY);
+  const unstuckTurnCountRef = React.useRef(0);
+  const measuredSpeedRef = React.useRef(0);
+  const actualMoveDistanceRef = React.useRef(0);
+  const expectedMoveDistanceRef = React.useRef(0);
+  const expectedSpeedRef = React.useRef(0);
+  const movementRatioRef = React.useRef(1);
+  const distanceSinceIdleRef = React.useRef(0);
+  const lastJunctionDecisionAtRef = React.useRef(0);
+  const lastJunctionPositionRef = React.useRef(new THREE.Vector3(...position));
+  const nextJunctionTurnSignRef = React.useRef(1);
   const aiSnapshotAtRef = React.useRef(0);
   const spawnedRef = React.useRef(false);
   const hitTimersRef = React.useRef<number[]>([]);
@@ -217,6 +247,11 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
     mode: "waiting",
     playerDistance: null as number | null,
     blocked: false,
+    measuredSpeed: 0,
+    expectedSpeed: 0,
+    movementRatio: 1,
+    unstuckTurns: 0,
+    distanceSinceIdle: 0,
     position: position as [number, number, number],
   });
 
@@ -302,6 +337,7 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
   React.useEffect(() => {
     spawnedRef.current = false;
     positionRef.current.set(adjustedPosition[0], adjustedPosition[1], adjustedPosition[2]);
+    lastValidPositionRef.current.copy(positionRef.current);
     yawRef.current = rotationY;
     targetYawRef.current = rotationY;
     aiModeRef.current = "waiting";
@@ -319,6 +355,19 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
       walk: 0,
     };
     lastMoveCheckPositionRef.current.copy(positionRef.current);
+    lastMoveCheckAtRef.current = 0;
+    unstuckActiveRef.current = false;
+    unstuckTargetYawRef.current = rotationY;
+    unstuckTurnCountRef.current = 0;
+    measuredSpeedRef.current = 0;
+    actualMoveDistanceRef.current = 0;
+    expectedMoveDistanceRef.current = 0;
+    expectedSpeedRef.current = 0;
+    movementRatioRef.current = 1;
+    distanceSinceIdleRef.current = 0;
+    lastJunctionDecisionAtRef.current = 0;
+    lastJunctionPositionRef.current.copy(positionRef.current);
+    nextJunctionTurnSignRef.current = 1;
   }, [adjustedPosition, rotationY]);
 
   React.useEffect(
@@ -347,6 +396,15 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
     const ai = MONSTER_MUTANT_CONFIG.ai;
 
     if (!active || !ai.enabled) {
+      lastMoveCheckAtRef.current = 0;
+      lastMoveCheckPositionRef.current.copy(positionRef.current);
+      unstuckActiveRef.current = false;
+      unstuckTurnCountRef.current = 0;
+      measuredSpeedRef.current = 0;
+      actualMoveDistanceRef.current = 0;
+      expectedMoveDistanceRef.current = 0;
+      expectedSpeedRef.current = 0;
+      movementRatioRef.current = 1;
       playSemantic("idle", { fadeDuration: 0.16 });
       model.position.copy(positionRef.current);
       model.rotation.y = yawRef.current + MONSTER_MUTANT_CONFIG.debugAdjustments.frontOrientationY;
@@ -354,6 +412,7 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
     }
 
     const position = positionRef.current;
+    const frameStartPosition = position.clone();
     const playerPosition = playerPositionRef.current;
     const playerDistance = horizontalDistance(position, playerPosition);
     const toPlayer = new THREE.Vector3(
@@ -365,11 +424,21 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
     if (hasPlayerDirection) toPlayer.normalize();
 
     const forward = forwardFromYaw(yawRef.current);
-    const seesPlayer =
+    const playerFacingDot = hasPlayerDirection ? forward.dot(toPlayer) : 1;
+    const playerHasLineOfSight =
       playerDistance <= ai.detectionRadius &&
       hasPlayerDirection &&
-      (forward.dot(toPlayer) >= ai.detectionConeDot || playerDistance <= 2.2) &&
       hasLineOfSight(position, playerPosition, collisionBounds);
+    const playerIsBehind =
+      playerHasLineOfSight &&
+      playerFacingDot <= -0.35;
+    const seesPlayer =
+      playerHasLineOfSight &&
+      (
+        playerFacingDot >= ai.detectionConeDot ||
+        playerDistance <= 2.2 ||
+        playerIsBehind
+      );
     if (seesPlayer) lastSeenPlayerAtRef.current = now;
 
     let blocked = false;
@@ -387,6 +456,13 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
       aiModeRef.current !== "chasing" &&
       aiModeRef.current !== "attacking"
     ) {
+      if (playerIsBehind && hasPlayerDirection) {
+        const playerYaw = yawFromDirection(toPlayer);
+        yawRef.current = playerYaw;
+        targetYawRef.current = playerYaw;
+        unstuckActiveRef.current = false;
+        unstuckTurnCountRef.current = 0;
+      }
       aiModeRef.current = "reacting";
       const rageDurationMs = Math.max(
         ai.rageDurationMs,
@@ -497,33 +573,94 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
       } else {
         aiModeRef.current = "hunting";
         speed = ai.walkSpeed;
-        if (hasPlayerDirection) targetYawRef.current = yawFromDirection(toPlayer);
         playMonsterCue("walk", playerDistance);
         playSemantic("walk", { fadeDuration: 0.2, timeScale: 0.92 });
 
         if (!nextIdleAtRef.current) {
           nextIdleAtRef.current = now + 3200 + Math.random() * 2600;
         }
-        if (now > nextIdleAtRef.current) {
+        const currentSampleDistance = actualMoveDistanceRef.current;
+        const currentSampleRatio =
+          expectedMoveDistanceRef.current > ai.movementEpsilon
+            ? currentSampleDistance / expectedMoveDistanceRef.current
+            : movementRatioRef.current;
+        const hasEnoughRecentProgress =
+          movementRatioRef.current >= ai.minimumMovementRatio &&
+          currentSampleRatio >= ai.minimumMovementRatio;
+
+        if (
+          now > nextIdleAtRef.current &&
+          !unstuckActiveRef.current &&
+          hasEnoughRecentProgress &&
+          distanceSinceIdleRef.current >= ai.minimumTravelBeforeIdle
+        ) {
           idleUntilRef.current = now + ai.idleMinMs + Math.random() * (ai.idleMaxMs - ai.idleMinMs);
           nextIdleAtRef.current = 0;
+          distanceSinceIdleRef.current = 0;
         }
+
+        const forwardClearance = sampleClearance(
+          position,
+          yawRef.current,
+          collisionBounds,
+          ai.scanDistance
+        );
 
         if (
           now > turnDecisionLockedUntilRef.current &&
-          sampleClearance(position, targetYawRef.current, collisionBounds, ai.scanDistance) < ai.scanDistance * 0.78
+          forwardClearance < ai.scanDistance * 0.78
         ) {
           targetYawRef.current = chooseOpenYaw(position, yawRef.current, collisionBounds);
           turnDecisionLockedUntilRef.current = now + ai.turnDecisionCooldownMs;
           blocked = true;
+        } else if (
+          now - lastJunctionDecisionAtRef.current >= ai.junctionDecisionCooldownMs &&
+          horizontalDistance(position, lastJunctionPositionRef.current) >= ai.junctionMinimumTravel
+        ) {
+          const junctionScanDistance = ai.scanDistance * 1.15;
+          const leftClearance = sampleClearance(
+            position,
+            yawRef.current + Math.PI * 0.5,
+            collisionBounds,
+            junctionScanDistance
+          );
+          const rightClearance = sampleClearance(
+            position,
+            yawRef.current - Math.PI * 0.5,
+            collisionBounds,
+            junctionScanDistance
+          );
+          const branchThreshold = junctionScanDistance * 0.78;
+          const leftOpen = leftClearance >= branchThreshold;
+          const rightOpen = rightClearance >= branchThreshold;
+
+          if (leftOpen || rightOpen) {
+            const turnSign =
+              leftOpen && rightOpen
+                ? nextJunctionTurnSignRef.current
+                : leftOpen
+                  ? 1
+                  : -1;
+            targetYawRef.current = yawRef.current + turnSign * Math.PI * 0.5;
+            nextJunctionTurnSignRef.current = -turnSign;
+            lastJunctionDecisionAtRef.current = now;
+            lastJunctionPositionRef.current.copy(position);
+            turnDecisionLockedUntilRef.current = now + ai.turnDecisionCooldownMs;
+          }
         }
       }
+    }
+
+    if (unstuckActiveRef.current) {
+      targetYawRef.current = unstuckTargetYawRef.current;
+      blocked = true;
     }
 
     const yawDelta = normalizeYawDelta(targetYawRef.current - yawRef.current);
     yawRef.current += THREE.MathUtils.clamp(yawDelta, -ai.turnSpeed * delta, ai.turnSpeed * delta);
 
     if (speed > 0) {
+      expectedMoveDistanceRef.current += speed * delta;
       const desired = position
         .clone()
         .addScaledVector(forwardFromYaw(yawRef.current), speed * delta);
@@ -578,21 +715,103 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
         position.z = collision.position.z;
       }
 
-      if (now - lastMoveCheckAtRef.current > ai.blockedAfterMs) {
-        const movedDistance = horizontalDistance(position, lastMoveCheckPositionRef.current);
-        if (movedDistance < ai.movementEpsilon) {
+      if (!isInsideMonsterNavigation(position, navigationAreas)) {
+        position.copy(lastValidPositionRef.current);
+        blocked = true;
+        unstuckActiveRef.current = true;
+        unstuckTurnCountRef.current += 1;
+        unstuckTargetYawRef.current = chooseOpenYaw(
+          position,
+          yawRef.current,
+          collisionBounds
+        );
+        targetYawRef.current = unstuckTargetYawRef.current;
+        turnDecisionLockedUntilRef.current = now + ai.unstuckRetryMs;
+      } else {
+        lastValidPositionRef.current.copy(position);
+      }
+
+      const actualFrameDistance = horizontalDistance(
+        position,
+        frameStartPosition
+      );
+      actualMoveDistanceRef.current += actualFrameDistance;
+      distanceSinceIdleRef.current += actualFrameDistance;
+
+      if (
+        lastMoveCheckAtRef.current <= 0 ||
+        now - lastMoveCheckAtRef.current > ai.blockedAfterMs * 2.5
+      ) {
+        lastMoveCheckAtRef.current = now;
+        lastMoveCheckPositionRef.current.copy(position);
+        actualMoveDistanceRef.current = 0;
+        expectedMoveDistanceRef.current = 0;
+      } else if (now - lastMoveCheckAtRef.current >= ai.blockedAfterMs) {
+        const elapsedSeconds = Math.max(
+          0.001,
+          (now - lastMoveCheckAtRef.current) / 1000
+        );
+        const movedDistance = actualMoveDistanceRef.current;
+        const expectedDistance = expectedMoveDistanceRef.current;
+        const measuredSpeed = movedDistance / elapsedSeconds;
+        const expectedSpeed = expectedDistance / elapsedSeconds;
+        const movementRatio =
+          expectedDistance > 0.001 ? movedDistance / expectedDistance : 1;
+        const progressionTooSlow =
+          movedDistance < ai.movementEpsilon ||
+          movementRatio < ai.minimumMovementRatio;
+        const forwardClearance = sampleClearance(
+          position,
+          yawRef.current,
+          collisionBounds,
+          ai.scanDistance
+        );
+        const forwardIsBlocked =
+          forwardClearance < ai.scanDistance * 0.62;
+
+        measuredSpeedRef.current = measuredSpeed;
+        expectedSpeedRef.current = expectedSpeed;
+        movementRatioRef.current = movementRatio;
+
+        if (progressionTooSlow && forwardIsBlocked) {
           blocked = true;
-          if (now > turnDecisionLockedUntilRef.current) {
-            targetYawRef.current = chooseOpenYaw(position, yawRef.current, collisionBounds);
-            turnDecisionLockedUntilRef.current = now + ai.turnDecisionCooldownMs;
+          if (!unstuckActiveRef.current) {
+            distanceSinceIdleRef.current = 0;
           }
+          unstuckActiveRef.current = true;
+          unstuckTurnCountRef.current += 1;
+          unstuckTargetYawRef.current = chooseOpenYaw(
+            position,
+            yawRef.current,
+            collisionBounds
+          );
+          targetYawRef.current = unstuckTargetYawRef.current;
+          turnDecisionLockedUntilRef.current = now + ai.unstuckRetryMs;
           if (aiModeRef.current === "hunting") {
             aiModeRef.current = "blocked";
           }
+        } else if (
+          unstuckActiveRef.current &&
+          (!progressionTooSlow || !forwardIsBlocked)
+        ) {
+          unstuckActiveRef.current = false;
+          unstuckTurnCountRef.current = 0;
         }
         lastMoveCheckAtRef.current = now;
         lastMoveCheckPositionRef.current.copy(position);
+        actualMoveDistanceRef.current = 0;
+        expectedMoveDistanceRef.current = 0;
       }
+    } else {
+      lastMoveCheckAtRef.current = now;
+      lastMoveCheckPositionRef.current.copy(position);
+      unstuckActiveRef.current = false;
+      unstuckTurnCountRef.current = 0;
+      measuredSpeedRef.current = 0;
+      actualMoveDistanceRef.current = 0;
+      expectedMoveDistanceRef.current = 0;
+      expectedSpeedRef.current = 0;
+      movementRatioRef.current = 1;
     }
 
     model.position.copy(position);
@@ -608,6 +827,11 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
         mode: aiModeRef.current,
         playerDistance: Number(playerDistance.toFixed(2)),
         blocked,
+        measuredSpeed: Number(measuredSpeedRef.current.toFixed(3)),
+        expectedSpeed: Number(expectedSpeedRef.current.toFixed(3)),
+        movementRatio: Number(movementRatioRef.current.toFixed(2)),
+        unstuckTurns: unstuckTurnCountRef.current,
+        distanceSinceIdle: Number(distanceSinceIdleRef.current.toFixed(2)),
         position: [Number(position.x.toFixed(3)), Number(position.y.toFixed(3)), Number(position.z.toFixed(3))],
       });
     }
@@ -637,6 +861,11 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
       aiMode: aiSnapshot.mode,
       playerDistance: aiSnapshot.playerDistance,
       blocked: aiSnapshot.blocked,
+      measuredSpeed: aiSnapshot.measuredSpeed,
+      expectedSpeed: aiSnapshot.expectedSpeed,
+      movementRatio: aiSnapshot.movementRatio,
+      unstuckTurns: aiSnapshot.unstuckTurns,
+      distanceSinceIdle: aiSnapshot.distanceSinceIdle,
       error,
     });
   }, [
@@ -660,9 +889,14 @@ export const MonsterMutant: React.FC<MonsterMutantProps> = ({
     onDebugChange,
     state,
     aiSnapshot.blocked,
+    aiSnapshot.expectedSpeed,
+    aiSnapshot.distanceSinceIdle,
+    aiSnapshot.measuredSpeed,
     aiSnapshot.mode,
+    aiSnapshot.movementRatio,
     aiSnapshot.playerDistance,
     aiSnapshot.position,
+    aiSnapshot.unstuckTurns,
     visible,
   ]);
 

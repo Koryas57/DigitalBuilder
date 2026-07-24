@@ -24,6 +24,9 @@ export const useAmbienceAudio = (
   }, [volume]);
 
   React.useEffect(() => {
+    let pendingPlayingAudio: HTMLAudioElement | null = null;
+    let pendingPlayingHandler: (() => void) | null = null;
+
     const clearScheduled = () => {
       if (timerRef.current !== null) {
         window.clearTimeout(timerRef.current);
@@ -36,6 +39,14 @@ export const useAmbienceAudio = (
       if (volumeFrameRef.current !== null) {
         window.cancelAnimationFrame(volumeFrameRef.current);
         volumeFrameRef.current = null;
+      }
+      if (pendingPlayingAudio && pendingPlayingHandler) {
+        pendingPlayingAudio.removeEventListener(
+          "playing",
+          pendingPlayingHandler
+        );
+        pendingPlayingAudio = null;
+        pendingPlayingHandler = null;
       }
     };
 
@@ -59,18 +70,25 @@ export const useAmbienceAudio = (
 
       if (!shouldFade) return;
 
-      const startedAt = performance.now();
-      const fade = (now: number) => {
-        const progress = Math.min(1, (now - startedAt) / fadeInMs);
-        audio.volume = targetVolumeRef.current * progress;
-        if (progress < 1) {
-          frameRef.current = window.requestAnimationFrame(fade);
-        } else {
-          frameRef.current = null;
-        }
+      const beginFade = () => {
+        pendingPlayingAudio = null;
+        pendingPlayingHandler = null;
+        const startedAt = performance.now();
+        const fade = (now: number) => {
+          const progress = Math.min(1, (now - startedAt) / fadeInMs);
+          audio.volume = targetVolumeRef.current * progress;
+          if (progress < 1) {
+            frameRef.current = window.requestAnimationFrame(fade);
+          } else {
+            frameRef.current = null;
+          }
+        };
+        frameRef.current = window.requestAnimationFrame(fade);
       };
 
-      frameRef.current = window.requestAnimationFrame(fade);
+      pendingPlayingAudio = audio;
+      pendingPlayingHandler = beginFade;
+      audio.addEventListener("playing", beginFade, { once: true });
     };
 
     if (enabled && startDelayMs > 0) {
@@ -94,12 +112,14 @@ export const useAmbienceAudio = (
     window.addEventListener("corridor-audio-unlocked", handleAudioUnlocked);
     window.addEventListener("pointerdown", resumeAfterGesture);
     window.addEventListener("keydown", resumeAfterGesture);
+    window.addEventListener("keyup", resumeAfterGesture);
 
     return () => {
       clearScheduled();
       window.removeEventListener("corridor-audio-unlocked", handleAudioUnlocked);
       window.removeEventListener("pointerdown", resumeAfterGesture);
       window.removeEventListener("keydown", resumeAfterGesture);
+      window.removeEventListener("keyup", resumeAfterGesture);
       audioRef.current?.pause();
       audioRef.current = null;
     };

@@ -13,6 +13,33 @@ export class AudioManager {
     return this.unlocked;
   }
 
+  prime(src: string) {
+    if (!this.unlocked) return;
+    const audio = this.getAudio(src);
+    if (!audio.paused) return;
+
+    const previousVolume = audio.volume;
+    const previousMuted = audio.muted;
+    const previousLoop = audio.loop;
+    audio.volume = 0;
+    audio.muted = false;
+    audio.loop = false;
+
+    const restore = () => {
+      audio.pause();
+      try {
+        audio.currentTime = 0;
+      } catch {
+        // Metadata may not be available during the unlock gesture.
+      }
+      audio.volume = previousVolume;
+      audio.muted = previousMuted;
+      audio.loop = previousLoop;
+    };
+
+    void audio.play().then(restore).catch(restore);
+  }
+
   getAudio(src: string) {
     if (!this.cache.has(src)) {
       const audio = new Audio(src);

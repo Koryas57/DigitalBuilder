@@ -31,6 +31,22 @@ interface MonsterPresenceControllerProps {
   spawnCycleToken?: number;
 }
 
+interface ResolvedMonsterSpawn {
+  id: string;
+  position: [number, number, number];
+  rotationY: number;
+  scale: number;
+  initialAnimation: string;
+}
+
+export interface MonsterNavigationArea {
+  id: string;
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
 const isMonsterSpawn = (module: CorridorModule): module is MonsterSpawnConfig =>
   module.type === "monsterSpawn" &&
   module.asset === "monster-mutant-7" &&
@@ -94,6 +110,28 @@ const getModuleFootprintFromBounds = (
     halfLong: Math.max(sizeX, sizeZ) * 0.5,
   };
 };
+
+const buildMonsterNavigationAreas = (
+  modules: CorridorModule[],
+  bounds: CorridorBounds[]
+): MonsterNavigationArea[] =>
+  modules
+    .filter((module) => (module.type ?? "corridor") === "corridor")
+    .map((module, moduleIndex) => {
+      const prefix = `${module.asset}-${moduleIndex}-`;
+      const moduleBounds = bounds.filter((bound) => bound.id.startsWith(prefix));
+      if (!moduleBounds.length) return null;
+
+      const points = moduleBounds.flatMap((bound) => [bound.start, bound.end]);
+      return {
+        id: module.id ?? `${module.asset}-${moduleIndex}`,
+        minX: Math.min(...points.map((point) => point.x)),
+        maxX: Math.max(...points.map((point) => point.x)),
+        minZ: Math.min(...points.map((point) => point.y)),
+        maxZ: Math.max(...points.map((point) => point.y)),
+      };
+    })
+    .filter((area): area is MonsterNavigationArea => Boolean(area));
 
 const closestPointOnSegment = (point: THREE.Vector2, bound: CorridorBounds) => {
   const segment = bound.end.clone().sub(bound.start);
@@ -164,16 +202,21 @@ const findSpawnFromPlayerCorridor = (bounds: CorridorBounds[]) => {
 
 const findMonsterFallbackSpawn = (
   modules: CorridorModule[],
-  bounds: CorridorBounds[]
+  bounds: CorridorBounds[],
+  currentPlayerPosition?: THREE.Vector3
 ) => {
   const playerSpawn = modules.find((module) => module.type === "playerSpawn");
-  const playerCorridorSpawn = findSpawnFromPlayerCorridor(bounds);
+  const playerCorridorSpawn = currentPlayerPosition
+    ? null
+    : findSpawnFromPlayerCorridor(bounds);
   if (playerCorridorSpawn) return playerCorridorSpawn;
 
   const corridorModules = modules.filter((module) => (module.type ?? "corridor") === "corridor");
-  const playerOrigin = playerSpawn
-    ? new THREE.Vector3(playerSpawn.position[0], 0, playerSpawn.position[2])
-    : new THREE.Vector3();
+  const playerOrigin = currentPlayerPosition
+    ? currentPlayerPosition.clone().setY(0)
+    : playerSpawn
+      ? new THREE.Vector3(playerSpawn.position[0], 0, playerSpawn.position[2])
+      : new THREE.Vector3();
   const fallbackEntry = corridorModules
     .map((module, index) => ({
       module,
@@ -234,7 +277,10 @@ const findMonsterFallbackSpawn = (
       0,
       chosen.z,
     ] as [number, number, number],
-    rotationY: playerSpawn ? Math.atan2(chosen.x - playerOrigin.x, chosen.z - playerOrigin.z) : rotationY,
+    rotationY: Math.atan2(
+      chosen.x - playerOrigin.x,
+      chosen.z - playerOrigin.z
+    ),
   };
 };
 
@@ -250,7 +296,9 @@ export const MonsterPresenceController: React.FC<MonsterPresenceControllerProps>
   spawnCycleToken = 0,
 }) => {
   const [spawnDelayComplete, setSpawnDelayComplete] = React.useState(false);
-  const spawn = React.useMemo(() => {
+  const [runtimeSpawn, setRuntimeSpawn] =
+    React.useState<ResolvedMonsterSpawn | null>(null);
+  const spawn = React.useMemo<ResolvedMonsterSpawn | null>(() => {
     const jsonSpawn = modules.find(isMonsterSpawn);
     if (jsonSpawn) {
       return {
@@ -286,19 +334,59 @@ export const MonsterPresenceController: React.FC<MonsterPresenceControllerProps>
 
   const { visible, state, show, hide, toggle } = useMonsterVisibility(false);
   const keyboardEnabled = MONSTER_MUTANT_CONFIG.debug && introPhase === "playing";
+  const navigationAreas = React.useMemo(
+    () => buildMonsterNavigationAreas(modules, collisionBounds),
+    [collisionBounds, modules]
+  );
 
   React.useEffect(() => {
     setSpawnDelayComplete(false);
+    setRuntimeSpawn(null);
     hide();
     if (!spawn || introPhase !== "playing" || playerDowned) return undefined;
 
     const timer = window.setTimeout(() => {
+      const currentPlayerPosition = playerPositionRef.current
+        .clone()
+        .setY(0);
+      const spawnPosition = new THREE.Vector3(...spawn.position).setY(0);
+      const tooCloseToPlayer =
+        spawnPosition.distanceTo(currentPlayerPosition) <
+        MONSTER_MUTANT_CONFIG.ai.spawnMinPlayerDistance;
+      const relocatedSpawn = tooCloseToPlayer
+        ? findMonsterFallbackSpawn(
+            modules,
+            collisionBounds,
+            currentPlayerPosition
+          )
+        : null;
+
+      setRuntimeSpawn(
+        relocatedSpawn
+          ? {
+              ...spawn,
+              id: `${spawn.id}-relocated`,
+              position: relocatedSpawn.position,
+              rotationY: relocatedSpawn.rotationY,
+            }
+          : spawn
+      );
       setSpawnDelayComplete(true);
       if (MONSTER_MUTANT_CONFIG.debug) show();
     }, MONSTER_MUTANT_CONFIG.ai.spawnDelayMs);
 
     return () => window.clearTimeout(timer);
-  }, [hide, introPhase, playerDowned, show, spawn, spawnCycleToken]);
+  }, [
+    collisionBounds,
+    hide,
+    introPhase,
+    modules,
+    playerDowned,
+    playerPositionRef,
+    show,
+    spawn,
+    spawnCycleToken,
+  ]);
 
   React.useEffect(() => {
     if (!spawn) {
@@ -324,18 +412,20 @@ export const MonsterPresenceController: React.FC<MonsterPresenceControllerProps>
   }, [keyboardEnabled, toggle]);
 
   if (!spawn) return null;
+  const displayedSpawn = runtimeSpawn ?? spawn;
 
   return (
     <MonsterMutant
       visible={visible && spawnDelayComplete && !playerDowned}
-      position={spawn.position}
-      rotationY={spawn.rotationY}
-      scale={spawn.scale}
-      initialAnimation={spawn.initialAnimation}
+      position={displayedSpawn.position}
+      rotationY={displayedSpawn.rotationY}
+      scale={displayedSpawn.scale}
+      initialAnimation={displayedSpawn.initialAnimation}
       keyboardEnabled={keyboardEnabled}
       active={active && !playerDowned}
       playerPositionRef={playerPositionRef}
       collisionBounds={collisionBounds}
+      navigationAreas={navigationAreas}
       state={state}
       onDebugChange={onDebugChange}
       onPlayerDamage={onPlayerDamage}
