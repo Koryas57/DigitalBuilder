@@ -110,7 +110,7 @@ export const MONSTER_MUTANT_CONFIG = {
     turnDecisionCooldownMs: 260,
     blockedAfterMs: 360,
     movementEpsilon: 0.028,
-    spawnDelayMs: 60000,
+    spawnDelayMs: 71000,
     maxAttackCount: 12,
   },
   audio: {

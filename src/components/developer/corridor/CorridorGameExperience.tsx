@@ -45,8 +45,12 @@ import {
   DEFAULT_INTRO_CAMERA_STATE,
   INTRO_AUDIO,
   LOCKED_CONTROL_STATE,
+  PLAYING_CONTROL_STATE,
   type IntroCameraState,
 } from "./intro/introConfig";
+import { FIRST_CALL_AUDIO_CONFIG } from "../../../data/firstCallConfig";
+import { FirstCallController } from "../../corridor/call/FirstCallController";
+import type { FirstCallRuntime } from "../../../hooks/useFirstCallSequence";
 
 interface CorridorGameExperienceProps {
   movementInput: { x: number; z: number };
@@ -69,6 +73,27 @@ const initialDebug: CorridorPlayerDebugState = {
   footstepVolume: DEFAULT_FOOTSTEP_VOLUME,
   backgroundVolume: DEFAULT_BACKGROUND_VOLUME,
   footstepStep: 0,
+};
+
+const INITIAL_FIRST_CALL_RUNTIME: FirstCallRuntime = {
+  state: "idle",
+  timerActive: false,
+  ringingAudioActive: false,
+  voiceCurrentTime: 0,
+  voiceDuration: 0,
+  currentCueIndex: -1,
+  audioUnlocked: false,
+  controlsSuspended: false,
+  completed: false,
+  ambienceDuckFactor: 1,
+  objectiveVisible: false,
+  resumeHintVisible: false,
+  error: null,
+};
+
+const CALL_INTERACTION_CONTROL_STATE = {
+  ...PLAYING_CONTROL_STATE,
+  lookEnabled: false,
 };
 
 const toPlayerYaw = (rotation: number) =>
@@ -228,6 +253,9 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
   const [playerDowned, setPlayerDowned] = useState(false);
   const [recoveryToken, setRecoveryToken] = useState(0);
   const [monsterSpawnCycleToken, setMonsterSpawnCycleToken] = useState(0);
+  const [firstCallRuntime, setFirstCallRuntime] = useState<FirstCallRuntime>(
+    INITIAL_FIRST_CALL_RUNTIME
+  );
   const playerPositionRef = useRef(new THREE.Vector3(...PLAYER_SPAWN.position));
   const damageAudioRef = useRef<HTMLAudioElement | null>(null);
   const damageFadeTimerRef = useRef<number | null>(null);
@@ -280,11 +308,22 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
     setAudioUnlocked(true);
   }, []);
   const lightingPresetIndex = LIGHTING_PRESET_ORDER.indexOf(lightingPreset);
+  const firstCallSequenceActive = [
+    "ringing",
+    "answering",
+    "playingMessage",
+    "ending",
+  ].includes(firstCallRuntime.state);
   const effectiveBackgroundVolume =
     damageOverlayState !== "hidden" || playerDowned
-      ? backgroundVolume * 0.56
-      : backgroundVolume;
-  const effectiveControlState = pauseOpen || playerDowned ? LOCKED_CONTROL_STATE : introState.controlState;
+      ? backgroundVolume * 0.56 * firstCallRuntime.ambienceDuckFactor
+      : backgroundVolume * firstCallRuntime.ambienceDuckFactor;
+  const effectiveControlState =
+    pauseOpen || playerDowned
+      ? LOCKED_CONTROL_STATE
+      : firstCallRuntime.state === "ringing"
+        ? CALL_INTERACTION_CONTROL_STATE
+        : introState.controlState;
   const handleRestart = React.useCallback(() => {
     setRestartToken((current) => current + 1);
     setPlayerMoved(false);
@@ -520,11 +559,14 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
             onOverviewModeChange={setOverviewMode}
             spawnConfig={spawnConfig}
             collisionBounds={bounds}
-            audioUnlocked={audioUnlocked}
+            ambienceEnabled={
+              audioUnlocked && introState.ambienceReady
+            }
             controlState={effectiveControlState}
             introCameraState={introCameraState}
             backgroundFadeInMs={INTRO_AUDIO.backgroundFadeInMs}
             backgroundStartDelayMs={INTRO_AUDIO.backgroundStartDelayMs}
+            backgroundVolumeTransitionMs={FIRST_CALL_AUDIO_CONFIG.fadeDurationMs}
             onPlayerMoved={() => setPlayerMoved(true)}
             restartToken={restartToken}
             footstepVolume={footstepVolume}
@@ -540,7 +582,11 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
             collisionBounds={bounds}
             playerPositionRef={playerPositionRef}
             introPhase={introState.phase}
-            active={introState.phase === "playing" && !pauseOpen}
+            active={
+              introState.phase === "playing" &&
+              !pauseOpen &&
+              !firstCallSequenceActive
+            }
             onDebugChange={setMonsterDebug}
             onPlayerDamage={handlePlayerDamage}
             playerDowned={playerDowned}
@@ -602,7 +648,20 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         onCameraStateChange={setIntroCameraState}
       />
 
-      {introState.phase === "playing" && !pauseOpen && (
+      <FirstCallController
+        ready={
+          introState.phase === "playing" &&
+          audioUnlocked
+        }
+        audioUnlocked={audioUnlocked}
+        reducedMotion={reducedMotion}
+        resetToken={restartToken}
+        onRuntimeChange={setFirstCallRuntime}
+      />
+
+      {introState.phase === "playing" &&
+        !pauseOpen &&
+        !firstCallSequenceActive && (
         <button
           className="developer-r3f-pause-trigger"
           type="button"
@@ -745,6 +804,23 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
           <span>Head bob enabled: {introState.controlState.headBobEnabled ? "yes" : "no"}</span>
           <span>Background audio: {introState.backgroundAudioState}</span>
           <span>Neon played: {introState.neonPlayed ? "yes" : "no"}</span>
+          <span>Intro audio finished: {introState.introAudioFinished ? "yes" : "no"}</span>
+          <span>Ambience handoff ready: {introState.ambienceReady ? "yes" : "no"}</span>
+          <span>First call state: {firstCallRuntime.state}</span>
+          <span>First call timer: {firstCallRuntime.timerActive ? "active" : "inactive"}</span>
+          <span>First call ringing: {firstCallRuntime.ringingAudioActive ? "active" : "inactive"}</span>
+          <span>
+            First call voice: {firstCallRuntime.voiceCurrentTime.toFixed(2)} /{" "}
+            {firstCallRuntime.voiceDuration.toFixed(2)}
+          </span>
+          <span>First call cue: {firstCallRuntime.currentCueIndex}</span>
+          <span>First call audio unlocked: {firstCallRuntime.audioUnlocked ? "yes" : "no"}</span>
+          <span>
+            First call look suspended:{" "}
+            {firstCallRuntime.controlsSuspended ? "yes" : "no"}
+          </span>
+          <span>First call completed: {firstCallRuntime.completed ? "yes" : "no"}</span>
+          <span>First call error: {firstCallRuntime.error ?? "none"}</span>
           <span>Monster loaded: {monsterDebug.loaded ? "yes" : "no"}</span>
           <span>Monster visible: {monsterDebug.visible ? "yes" : "no"} / N</span>
           <span>Monster state: {monsterDebug.state}</span>

@@ -31,6 +31,8 @@ export interface IntroSequenceState {
   revealProgress: number;
   cameraProgress: number;
   neonPlayed: boolean;
+  introAudioFinished: boolean;
+  ambienceReady: boolean;
   controlState: PlayerControlState;
   skipIntro: () => void;
 }
@@ -84,7 +86,11 @@ export const useIntroSequence = ({
   const [revealProgress, setRevealProgress] = React.useState(0);
   const [cameraProgress, setCameraProgress] = React.useState(0);
   const [neonPlayed, setNeonPlayed] = React.useState(false);
+  const [introAudioFinished, setIntroAudioFinished] = React.useState(false);
+  const [ambienceReady, setAmbienceReady] = React.useState(false);
   const neonPlayedRef = React.useRef(false);
+  const introAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const introFadeFrameRef = React.useRef<number | null>(null);
   const cancelledRef = React.useRef(false);
   const completedRef = React.useRef(!INTRO_ENABLED || INTRO_SKIP_IN_DEBUG);
   const timersRef = React.useRef<number[]>([]);
@@ -97,8 +103,28 @@ export const useIntroSequence = ({
     framesRef.current = [];
   }, []);
 
+  const stopIntroAudio = React.useCallback(() => {
+    if (introFadeFrameRef.current !== null) {
+      window.cancelAnimationFrame(introFadeFrameRef.current);
+      introFadeFrameRef.current = null;
+    }
+    const audio = introAudioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.loop = false;
+    try {
+      audio.currentTime = 0;
+    } catch {
+      // Metadata may still be loading during a fast skip.
+    }
+    introAudioRef.current = null;
+  }, []);
+
   const completeIntro = React.useCallback(() => {
     clearScheduledWork();
+    stopIntroAudio();
+    setIntroAudioFinished(true);
+    setAmbienceReady(true);
     cancelledRef.current = true;
     completedRef.current = true;
     setPhase("playing");
@@ -113,7 +139,7 @@ export const useIntroSequence = ({
     } catch {
       // Session storage can be unavailable in private contexts.
     }
-  }, [clearScheduledWork]);
+  }, [clearScheduledWork, stopIntroAudio]);
 
   React.useEffect(() => {
     if (!INTRO_ENABLED || INTRO_SKIP_IN_DEBUG) {
@@ -134,9 +160,65 @@ export const useIntroSequence = ({
 
     const neonTimer = window.setTimeout(() => {
       if (cancelledRef.current || neonPlayedRef.current) return;
-      corridorAudioManager.playOneShot(INTRO_AUDIO.neonSrc, INTRO_AUDIO.neonVolume);
+      const introAudio = corridorAudioManager
+        .getAudio(INTRO_AUDIO.neonSrc)
+        .cloneNode(true) as HTMLAudioElement;
+      introAudio.preload = "auto";
+      introAudio.loop = false;
+      introAudio.volume = INTRO_AUDIO.neonVolume;
+      introAudioRef.current = introAudio;
       neonPlayedRef.current = true;
       setNeonPlayed(true);
+
+      let fadeStarted = false;
+      const removeAudioListeners = () => {
+        introAudio.removeEventListener("timeupdate", handleTimeUpdate);
+        introAudio.removeEventListener("ended", finishIntroAudio);
+        introAudio.removeEventListener("error", finishIntroAudio);
+      };
+      const finishIntroAudio = () => {
+        removeAudioListeners();
+        if (introFadeFrameRef.current !== null) {
+          window.cancelAnimationFrame(introFadeFrameRef.current);
+          introFadeFrameRef.current = null;
+        }
+        introAudioRef.current = null;
+        setAmbienceReady(true);
+        setIntroAudioFinished(true);
+      };
+      const beginCrossfade = () => {
+        if (fadeStarted) return;
+        fadeStarted = true;
+        setAmbienceReady(true);
+        const initialVolume = introAudio.volume;
+        const remainingMs = Math.max(
+          100,
+          (introAudio.duration - introAudio.currentTime) * 1000
+        );
+        const startedAt = performance.now();
+        const fadeOut = (now: number) => {
+          const progress = Math.min(1, (now - startedAt) / remainingMs);
+          introAudio.volume = initialVolume * (1 - progress);
+          if (progress < 1 && !introAudio.ended) {
+            introFadeFrameRef.current = window.requestAnimationFrame(fadeOut);
+          } else {
+            introFadeFrameRef.current = null;
+          }
+        };
+        introFadeFrameRef.current = window.requestAnimationFrame(fadeOut);
+      };
+      const handleTimeUpdate = () => {
+        if (!Number.isFinite(introAudio.duration)) return;
+        const remainingMs =
+          (introAudio.duration - introAudio.currentTime) * 1000;
+        if (remainingMs <= INTRO_AUDIO.backgroundCrossfadeMs) {
+          beginCrossfade();
+        }
+      };
+      introAudio.addEventListener("timeupdate", handleTimeUpdate);
+      introAudio.addEventListener("ended", finishIntroAudio, { once: true });
+      introAudio.addEventListener("error", finishIntroAudio, { once: true });
+      void introAudio.play().catch(finishIntroAudio);
     }, INTRO_AUDIO.neonDelayMs);
     registerTimer(neonTimer);
 
@@ -197,8 +279,16 @@ export const useIntroSequence = ({
     return () => {
       cancelledRef.current = true;
       clearScheduledWork();
+      stopIntroAudio();
     };
-  }, [audioUnlocked, clearScheduledWork, completeIntro, mapReady, reducedMotion]);
+  }, [
+    audioUnlocked,
+    clearScheduledWork,
+    completeIntro,
+    mapReady,
+    reducedMotion,
+    stopIntroAudio,
+  ]);
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -222,6 +312,8 @@ export const useIntroSequence = ({
     revealProgress,
     cameraProgress,
     neonPlayed,
+    introAudioFinished,
+    ambienceReady,
     controlState: phase === "playing" ? PLAYING_CONTROL_STATE : LOCKED_CONTROL_STATE,
     skipIntro: completeIntro,
   };

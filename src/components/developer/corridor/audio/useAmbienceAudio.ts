@@ -10,11 +10,13 @@ export const useAmbienceAudio = (
   volume: number,
   enabled: boolean,
   fadeInMs = 0,
-  startDelayMs = 0
+  startDelayMs = 0,
+  volumeTransitionMs = 0
 ) => {
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const targetVolumeRef = React.useRef(volume);
   const frameRef = React.useRef<number | null>(null);
+  const volumeFrameRef = React.useRef<number | null>(null);
   const timerRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
@@ -30,6 +32,10 @@ export const useAmbienceAudio = (
       if (frameRef.current !== null) {
         window.cancelAnimationFrame(frameRef.current);
         frameRef.current = null;
+      }
+      if (volumeFrameRef.current !== null) {
+        window.cancelAnimationFrame(volumeFrameRef.current);
+        volumeFrameRef.current = null;
       }
     };
 
@@ -80,17 +86,55 @@ export const useAmbienceAudio = (
       startAudio();
     };
 
+    const resumeAfterGesture = () => {
+      if (!enabled || !audioRef.current || !audioRef.current.paused) return;
+      void audioRef.current.play().catch(() => undefined);
+    };
+
     window.addEventListener("corridor-audio-unlocked", handleAudioUnlocked);
+    window.addEventListener("pointerdown", resumeAfterGesture);
+    window.addEventListener("keydown", resumeAfterGesture);
 
     return () => {
       clearScheduled();
       window.removeEventListener("corridor-audio-unlocked", handleAudioUnlocked);
+      window.removeEventListener("pointerdown", resumeAfterGesture);
+      window.removeEventListener("keydown", resumeAfterGesture);
       audioRef.current?.pause();
       audioRef.current = null;
     };
   }, [enabled, fadeInMs, startDelayMs]);
 
   React.useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
-  }, [volume]);
+    const audio = audioRef.current;
+    if (!audio) return undefined;
+    if (volumeFrameRef.current !== null) {
+      window.cancelAnimationFrame(volumeFrameRef.current);
+      volumeFrameRef.current = null;
+    }
+    if (volumeTransitionMs <= 0) {
+      audio.volume = volume;
+      return undefined;
+    }
+
+    const initialVolume = audio.volume;
+    const startedAt = performance.now();
+    const transition = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / volumeTransitionMs);
+      audio.volume = initialVolume + (volume - initialVolume) * progress;
+      if (progress < 1) {
+        volumeFrameRef.current = window.requestAnimationFrame(transition);
+      } else {
+        volumeFrameRef.current = null;
+      }
+    };
+    volumeFrameRef.current = window.requestAnimationFrame(transition);
+
+    return () => {
+      if (volumeFrameRef.current !== null) {
+        window.cancelAnimationFrame(volumeFrameRef.current);
+        volumeFrameRef.current = null;
+      }
+    };
+  }, [volume, volumeTransitionMs]);
 };

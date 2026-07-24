@@ -52,6 +52,7 @@ export const INTRO_AUDIO = {
   neonSrc: "/assets/audio/Neon.mp3",
   backgroundFadeInMs: 2000,
   backgroundStartDelayMs: 250,
+  backgroundCrossfadeMs: 2200,
   neonDelayMs: 700,
   neonVolume: 0.42,
 };

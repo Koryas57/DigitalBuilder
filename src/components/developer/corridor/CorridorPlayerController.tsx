@@ -55,11 +55,12 @@ interface CorridorPlayerControllerProps {
   onOverviewModeChange: (enabled: boolean) => void;
   spawnConfig: { name: string; position: [number, number, number]; rotation: number; source: string };
   collisionBounds: CorridorBounds[];
-  audioUnlocked: boolean;
+  ambienceEnabled: boolean;
   controlState?: PlayerControlState;
   introCameraState?: IntroCameraState;
   backgroundFadeInMs?: number;
   backgroundStartDelayMs?: number;
+  backgroundVolumeTransitionMs?: number;
   onPlayerMoved?: () => void;
   restartToken?: number;
   footstepVolume: number;
@@ -98,11 +99,12 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
   onOverviewModeChange,
   spawnConfig,
   collisionBounds,
-  audioUnlocked,
+  ambienceEnabled,
   controlState = PLAYING_CONTROL_STATE,
   introCameraState,
   backgroundFadeInMs = 0,
   backgroundStartDelayMs = 0,
+  backgroundVolumeTransitionMs = 0,
   onPlayerMoved,
   restartToken = 0,
   footstepVolume,
@@ -135,7 +137,13 @@ export const CorridorPlayerController: React.FC<CorridorPlayerControllerProps> =
   const [footstepStep, setFootstepStep] = React.useState(0);
   const [sprintingState, setSprintingState] = React.useState(false);
 
-  useAmbienceAudio(backgroundVolume, audioUnlocked, backgroundFadeInMs, backgroundStartDelayMs);
+  useAmbienceAudio(
+    backgroundVolume,
+    ambienceEnabled,
+    backgroundFadeInMs,
+    backgroundStartDelayMs,
+    backgroundVolumeTransitionMs
+  );
   useFootstepAudio(footstepStep, sprintingState, footstepVolume);
 
   const fallbackBounds = useMemo(() => buildCorridorBounds(modules), [modules]);

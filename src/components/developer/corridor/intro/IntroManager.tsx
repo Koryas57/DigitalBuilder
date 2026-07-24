@@ -18,7 +18,9 @@ export interface IntroRuntimeState {
   cameraProgress: number;
   currentFov: number;
   neonPlayed: boolean;
-  backgroundAudioState: "locked" | "fade-in" | "playing";
+  introAudioFinished: boolean;
+  ambienceReady: boolean;
+  backgroundAudioState: "locked" | "waiting" | "fade-in" | "playing";
   controlState: PlayerControlState;
 }
 
@@ -29,6 +31,8 @@ export const INITIAL_INTRO_RUNTIME_STATE: IntroRuntimeState = {
   cameraProgress: 0,
   currentFov: DEFAULT_INTRO_CAMERA_STATE.fov,
   neonPlayed: false,
+  introAudioFinished: false,
+  ambienceReady: false,
   backgroundAudioState: "locked",
   controlState: {
     controlsEnabled: false,
@@ -105,11 +109,15 @@ export const IntroManager: React.FC<IntroManagerProps> = ({
       cameraProgress: sequence.cameraProgress,
       currentFov: cameraState.fov,
       neonPlayed: sequence.neonPlayed,
+      introAudioFinished: sequence.introAudioFinished,
+      ambienceReady: sequence.ambienceReady,
       backgroundAudioState: !audioUnlocked
         ? "locked"
-        : sequence.phase === "playing"
-          ? "playing"
-          : "fade-in",
+        : sequence.ambienceReady
+          ? sequence.introAudioFinished
+            ? "playing"
+            : "fade-in"
+          : "waiting",
       controlState: sequence.controlState,
     });
   }, [
@@ -119,6 +127,8 @@ export const IntroManager: React.FC<IntroManagerProps> = ({
     sequence.cameraProgress,
     sequence.controlState,
     sequence.introEnabled,
+    sequence.ambienceReady,
+    sequence.introAudioFinished,
     sequence.neonPlayed,
     sequence.phase,
     sequence.sentenceIndex,
