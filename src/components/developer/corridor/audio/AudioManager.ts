@@ -3,6 +3,7 @@ export class AudioManager {
   private cache = new Map<string, HTMLAudioElement>();
   private lastOneShotAt = new Map<string, number>();
   private lastSegmentAt = new Map<string, number>();
+  private playbackClaims = new Map<string, number>();
 
   unlock() {
     this.unlocked = true;
@@ -18,6 +19,7 @@ export class AudioManager {
     const audio = this.getAudio(src);
     if (!audio.paused) return;
 
+    const claimAtStart = this.playbackClaims.get(src) ?? 0;
     const previousVolume = audio.volume;
     const previousMuted = audio.muted;
     const previousLoop = audio.loop;
@@ -26,6 +28,7 @@ export class AudioManager {
     audio.loop = false;
 
     const restore = () => {
+      if ((this.playbackClaims.get(src) ?? 0) !== claimAtStart) return;
       audio.pause();
       try {
         audio.currentTime = 0;
@@ -37,7 +40,12 @@ export class AudioManager {
       audio.loop = previousLoop;
     };
 
-    void audio.play().then(restore).catch(restore);
+    void audio
+      .play()
+      .then(() => {
+        window.setTimeout(restore, 4000);
+      })
+      .catch(restore);
   }
 
   getAudio(src: string) {
@@ -108,11 +116,13 @@ export class AudioManager {
   playLoop(src: string, volume = 0.35, startTime = 0) {
     if (!this.unlocked) return null;
     const audio = this.getAudio(src);
+    const wasLooping = audio.loop;
+    this.playbackClaims.set(src, (this.playbackClaims.get(src) ?? 0) + 1);
     audio.loop = true;
     audio.volume = volume;
 
     const startPlayback = () => {
-      if (audio.paused || audio.ended) {
+      if (audio.paused || audio.ended || !wasLooping) {
         try {
           audio.currentTime = Number.isFinite(audio.duration)
             ? Math.min(startTime, Math.max(0, audio.duration - 0.2))

@@ -11,8 +11,6 @@ import {
   extractPrefabWallSegments,
   type CorridorBounds,
 } from "./CorridorCollisionSystem";
-import { WarpPortal } from "./WarpPortal";
-import { WarpTriggerSystem } from "./WarpTriggerSystem";
 
 export interface CorridorModule {
   id?: string;
@@ -36,8 +34,6 @@ interface CorridorMapLoaderProps {
     collisionBounds: CorridorBounds[],
     renderStats: CorridorRenderStats
   ) => void;
-  onPortalContactChange: (active: boolean) => void;
-  playerPositionRef: React.MutableRefObject<THREE.Vector3>;
   materialOverrideEnabled: boolean;
   debugVisual: boolean;
 }
@@ -212,19 +208,6 @@ const logMapBounds = (modules: CorridorModule[]) => {
   });
 };
 
-const getPortalPosition = (modules: CorridorModule[]) => {
-  const warp = modules.find((module) => module.type === "warp");
-  if (warp) return new THREE.Vector3(...warp.position).setY(1.2);
-
-  const corridorModules = modules.filter((module) => (module.type ?? "corridor") === "corridor");
-  const last = corridorModules[corridorModules.length - 1];
-  if (!last) return new THREE.Vector3(0, 1.2, -5);
-
-  const angle = (last.rotation * Math.PI) / 180;
-  const forward = new THREE.Vector3(-Math.sin(angle), 0, -Math.cos(angle));
-  return new THREE.Vector3(...last.position).add(forward.multiplyScalar(3.15)).setY(1.2);
-};
-
 const migrateModule = (module: CorridorModule, index: number): CorridorModule => ({
   id: module.id ?? `corridor-object-${index}`,
   type: module.type ?? "corridor",
@@ -237,8 +220,6 @@ const migrateModule = (module: CorridorModule, index: number): CorridorModule =>
 
 export const CorridorMapLoader: React.FC<CorridorMapLoaderProps> = ({
   onLoaded,
-  onPortalContactChange,
-  playerPositionRef,
   materialOverrideEnabled,
   debugVisual,
 }) => {
@@ -252,7 +233,6 @@ export const CorridorMapLoader: React.FC<CorridorMapLoaderProps> = ({
   const prefabWallSegments = useMemo(() => extractPrefabWallSegments(scene), [scene]);
   const prefabFootprint = useMemo(() => getCorridorPrefabFootprint(scene), [scene]);
   const lampAnchors = useMemo(() => extractLampAnchors(scene), [scene]);
-  const portalPosition = useMemo(() => getPortalPosition(modules), [modules]);
 
   useEffect(() => {
     let mounted = true;
@@ -355,12 +335,6 @@ export const CorridorMapLoader: React.FC<CorridorMapLoaderProps> = ({
           </group>
         );
       })}
-      <WarpPortal position={portalPosition} />
-      <WarpTriggerSystem
-        position={portalPosition}
-        playerPositionRef={playerPositionRef}
-        onPortalContactChange={onPortalContactChange}
-      />
       {debugVisual && modules.map((module, index) => (
         <Html
           position={[module.position[0], module.position[1] + 2.4, module.position[2]]}

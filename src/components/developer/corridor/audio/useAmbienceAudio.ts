@@ -70,7 +70,16 @@ export const useAmbienceAudio = (
 
       if (!shouldFade) return;
 
+      let fadeStarted = false;
       const beginFade = () => {
+        if (fadeStarted) return;
+        fadeStarted = true;
+        if (pendingPlayingAudio && pendingPlayingHandler) {
+          pendingPlayingAudio.removeEventListener(
+            "playing",
+            pendingPlayingHandler
+          );
+        }
         pendingPlayingAudio = null;
         pendingPlayingHandler = null;
         const startedAt = performance.now();
@@ -89,6 +98,9 @@ export const useAmbienceAudio = (
       pendingPlayingAudio = audio;
       pendingPlayingHandler = beginFade;
       audio.addEventListener("playing", beginFade, { once: true });
+      if (!audio.paused && audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        beginFade();
+      }
     };
 
     if (enabled && startDelayMs > 0) {

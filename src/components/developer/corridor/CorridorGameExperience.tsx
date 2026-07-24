@@ -51,6 +51,13 @@ import {
 import { FIRST_CALL_AUDIO_CONFIG } from "../../../data/firstCallConfig";
 import { FirstCallController } from "../../corridor/call/FirstCallController";
 import type { FirstCallRuntime } from "../../../hooks/useFirstCallSequence";
+import {
+  INITIAL_WARP_DEBUG_STATE,
+  WARP_CONFIG,
+  type WarpDebugState,
+  type WarpState,
+} from "../../../data/warpConfig";
+import { MysticWarpPortal } from "./warp/MysticWarpPortal";
 
 interface CorridorGameExperienceProps {
   movementInput: { x: number; z: number };
@@ -278,9 +285,11 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
 }) => {
   const [objects, setObjects] = useState<CorridorModule[]>([]);
   const [wallCollisionBounds, setWallCollisionBounds] = useState<CorridorBounds[]>([]);
-  const [portalContact, setPortalContact] = useState(false);
   const [debug, setDebug] = useState<CorridorPlayerDebugState>(initialDebug);
   const [monsterDebug, setMonsterDebug] = useState<MonsterDebugState>(EMPTY_MONSTER_DEBUG_STATE);
+  const [warpState, setWarpState] = useState<WarpState>("inactive");
+  const [warpDebug, setWarpDebug] = useState<WarpDebugState>(INITIAL_WARP_DEBUG_STATE);
+  const [warpTriggerDebugVisible, setWarpTriggerDebugVisible] = useState(false);
   const [overviewMode, setOverviewMode] = useState(false);
   const [materialOverrideEnabled, setMaterialOverrideEnabled] = useState(false);
   const [collisionDebugVisible, setCollisionDebugVisible] = useState(false);
@@ -402,7 +411,18 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
     setPlayerDowned(false);
     setRecoveryToken((current) => current + 1);
     setMonsterSpawnCycleToken((current) => current + 1);
+    setWarpState(objects.length ? "available" : "inactive");
+    setWarpDebug((current) => ({
+      ...current,
+      state: objects.length ? "available" : "inactive",
+      triggerActive: objects.length > 0,
+      playerInsideTrigger: false,
+    }));
     setPauseOpen(false);
+  }, [objects.length]);
+  const handleWarpEnter = React.useCallback(() => {
+    console.info("[Mystic warp] player entered trigger");
+    setWarpState((current) => (current === "available" ? "entered" : current));
   }, []);
   const handlePlayerDamage = React.useCallback(() => {
     if (playerDowned) return;
@@ -494,6 +514,12 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         event.preventDefault();
         setDebugConsoleVisible((current) => !current);
       }
+      if (
+        import.meta.env.DEV &&
+        event.key.toLowerCase() === WARP_CONFIG.debugToggleKey
+      ) {
+        setWarpTriggerDebugVisible((current) => !current);
+      }
       if (event.key === "Escape" && introState.phase === "playing") {
         event.preventDefault();
         setPauseOpen((current) => !current);
@@ -516,6 +542,11 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
       window.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [audioUnlocked, introState.phase, unlockAudio]);
+
+  React.useEffect(() => {
+    if (!objects.length) return;
+    setWarpState((current) => (current === "inactive" ? "available" : current));
+  }, [objects.length]);
 
   React.useEffect(() => {
     if (!pauseOpen) {
@@ -611,8 +642,6 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         <Suspense fallback={null}>
           <CorridorMapLoader
             onLoaded={handleMapLoaded}
-            onPortalContactChange={setPortalContact}
-            playerPositionRef={playerPositionRef}
             materialOverrideEnabled={materialOverrideEnabled}
             debugVisual={DEBUG_VISUAL}
           />
@@ -666,6 +695,13 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
             playerDowned={playerDowned}
             spawnCycleToken={monsterSpawnCycleToken}
           />
+          <MysticWarpPortal
+            playerPositionRef={playerPositionRef}
+            state={warpState}
+            triggerDebugVisible={import.meta.env.DEV && warpTriggerDebugVisible}
+            onEnter={handleWarpEnter}
+            onDebugChange={setWarpDebug}
+          />
         </Suspense>
 
         {overviewMode && (
@@ -688,9 +724,9 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         )}
       </Canvas>
 
-      {portalContact && (
+      {debugConsoleVisible && warpState === "entered" && (
         <div className="developer-r3f-portal-message">
-          Passage verrouille
+          Zone du portail détectée
         </div>
       )}
 
@@ -840,7 +876,7 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
         </div>
       )}
 
-      {debugConsoleVisible && (DEBUG_PLAYER || DEBUG_COLLISIONS) && (
+      {debugConsoleVisible && (DEBUG_PLAYER || DEBUG_COLLISIONS || import.meta.env.DEV) && (
         <div className="developer-r3f-debug">
           <strong>Debug Console</strong>
           <span>Position: {debug.position.join(", ")}</span>
@@ -870,6 +906,13 @@ export const CorridorGameExperience: React.FC<CorridorGameExperienceProps> = ({
           <span>Max anisotropy: {renderStats.maxAnisotropy}</span>
           <span>Spawn presets: 1 / 2 / 3</span>
           <span>FPS: {debug.fps}</span>
+          <span>Warp state: {warpDebug.state}</span>
+          <span>Warp distance: {warpDebug.distance.toFixed(2)} m</span>
+          <span>Warp trigger active: {warpDebug.triggerActive ? "yes" : "no"}</span>
+          <span>Warp position: {warpDebug.position.join(", ")}</span>
+          <span>Warp intensity: {warpDebug.intensity.toFixed(2)}</span>
+          <span>Player inside warp: {warpDebug.playerInsideTrigger ? "yes" : "no"}</span>
+          <span>Warp trigger helper: {warpTriggerDebugVisible ? "on" : "off"} / {WARP_CONFIG.debugToggleKey.toUpperCase()}</span>
           <span>Player hits: {playerHitCount}</span>
           <span>Player downed: {playerDowned ? "yes" : "no"}</span>
           <span>Experience phase: {introState.phase}</span>
