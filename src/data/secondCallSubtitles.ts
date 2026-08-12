@@ -1,7 +1,5 @@
 import type { SubtitleCue } from "./firstCallSubtitles";
 
-// Les indications vocales entre crochets ne sont volontairement pas affichées.
-// La fin de l'appel reste sans sous-titre pendant les rires et autres effets.
 export const SECOND_CALL_SUBTITLES: SubtitleCue[] = [
   {
     start: 0.12,
