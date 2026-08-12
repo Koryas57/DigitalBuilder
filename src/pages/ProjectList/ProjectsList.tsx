@@ -1,20 +1,28 @@
 import React from "react";
-import { Navigation } from "../../components/Navigation/Navigation";
+import { useNavigate } from "react-router-dom";
 import { Footer } from "../../components/Footer/Footer";
 import { ProjectCard } from "../../components/ProjectCard/ProjectCard";
+import { ExperienceNav } from "../../components/experience/ExperienceNav";
 import { projects } from "../../data/projects";
 import "../../assets/style/main.scss";
 
 export const ProjectsList: React.FC = () => {
+  const navigate = useNavigate();
+
   return (
     <main className="site-shell">
-      <Navigation />
+      <ExperienceNav
+        currentLabel="Projets"
+        onBackToPaths={() => navigate("/")}
+        onReplayIntro={() => navigate("/?intro=1")}
+      />
       <section className="section-frame projects-page">
         <div className="section-heading">
-          <p className="eyebrow">Tous les projets</p>
-          <h1>Projets, produits, expérimentations et preuves de progression.</h1>
+          <p className="eyebrow">Portfolio</p>
+          <h1>Projets sélectionnés.</h1>
           <p>
-            Cette page regroupe les projets en ligne, les projets en construction et les placeholders prêts à recevoir leurs études de cas.
+            Une sélection de produits numériques, de sites et d’expériences
+            interactives, présentés à travers des résultats concrets.
           </p>
         </div>
         <div className="projects-grid">

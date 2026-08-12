@@ -40,14 +40,16 @@ export const DeveloperQuickMode: React.FC<DeveloperQuickModeProps> = ({
       />
       <main className="quick-dev__content">
         <QuickModeHero onImmersiveMode={onImmersiveMode} onProjectsClick={() => scrollTo("quick-projects")} />
-        <QuickModeTechTags tags={developerQuickModeData.techTags} />
-        <QuickModeMetricCard />
+        <div className="quick-overview">
+          <QuickModeTechTags tags={developerQuickModeData.techTags} />
+          <QuickModeMetricCard />
+        </div>
         <section className="quick-grid" aria-label="Expertises développeur">
           <QuickModeExpertiseCard />
           <QuickModeCapabilitiesCard />
           <QuickModeImpactCard />
           <div id="quick-projects">
-            <QuickModeFeaturedProjects onProjectsClick={() => scrollTo("quick-projects")} />
+            <QuickModeFeaturedProjects />
           </div>
           <div id="quick-stack">
             <QuickModeStackCard />

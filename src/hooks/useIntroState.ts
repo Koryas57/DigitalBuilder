@@ -26,6 +26,8 @@ const shouldShowIntroInitially = () => {
       params.get("intro") === "1" ||
       localStorage.getItem(FORCE_INTRO_KEY) === "true";
 
+    if (params.has("path") && !forceIntro) return false;
+
     const sessionId = getSessionId();
     const hasSeenIntro = localStorage.getItem(INTRO_SEEN_KEY) === sessionId;
 

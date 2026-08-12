@@ -1,0 +1,317 @@
+.commerce-experience {
+  --commerce-gold: #e8cf91;
+  position: relative;
+  height: 100svh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: #fffaf0;
+  background:
+    radial-gradient(circle at 72% 2%, rgba(232, 207, 145, 0.12), transparent 32rem),
+    radial-gradient(circle at 8% 55%, rgba(127, 92, 255, 0.09), transparent 34rem),
+    linear-gradient(160deg, #030405, #07080b 58%, #030405);
+  scrollbar-width: thin;
+  scrollbar-color: var(--commerce-gold) transparent;
+}
+
+.commerce-experience__ambient {
+  position: fixed;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.26;
+  background:
+    repeating-radial-gradient(ellipse at 22% 44%, transparent 0 34px, rgba(232, 207, 145, 0.08) 35px, transparent 36px 74px),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: auto, 110px 110px, 110px 110px;
+  mask-image: radial-gradient(circle at center, black, transparent 74%);
+  animation: commerce-ambient-drift 18s ease-in-out infinite alternate;
+}
+
+.commerce-experience__content {
+  position: relative;
+  z-index: 1;
+  width: min(1480px, calc(100% - clamp(1.5rem, 5vw, 5rem)));
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(7rem, 12vh, 9rem) 0 clamp(3rem, 8vh, 6rem);
+}
+
+.commerce-experience__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(270px, 0.65fr);
+  gap: clamp(2rem, 6vw, 7rem);
+  align-items: end;
+  margin-bottom: clamp(2.5rem, 5vw, 4.5rem);
+}
+
+.commerce-experience__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--commerce-gold);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.commerce-experience__header h1 {
+  margin: 0.6rem 0 0;
+  font-size: clamp(4.5rem, 10vw, 9.5rem);
+  line-height: 0.8;
+  letter-spacing: -0.07em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.commerce-experience__header > p {
+  max-width: 29rem;
+  margin: 0 0 0.35rem;
+  color: rgba(255, 250, 240, 0.64);
+  font-size: clamp(1rem, 1.5vw, 1.18rem);
+  line-height: 1.65;
+}
+
+.commerce-showcase {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1rem, 1.5vw, 1.4rem);
+}
+
+.commerce-project {
+  --project-accent: #b7f8ca;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: clamp(18px, 2vw, 24px);
+  background: linear-gradient(145deg, rgba(15, 18, 23, 0.98), rgba(7, 9, 13, 0.98));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.4);
+  transition: border-color 320ms ease, box-shadow 320ms ease, transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.commerce-project--gold { --project-accent: #e8cf91; }
+.commerce-project--blue,
+.commerce-project--night { --project-accent: #72b8ff; }
+.commerce-project--violet { --project-accent: #a179ff; }
+
+.commerce-project:hover,
+.commerce-project:focus-within {
+  border-color: color-mix(in srgb, var(--project-accent) 48%, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.58), 0 0 36px color-mix(in srgb, var(--project-accent) 13%, transparent);
+  transform: translateY(-7px);
+}
+
+.commerce-project__surface {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: #090c10;
+  cursor: pointer;
+}
+
+.commerce-project__surface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 58%, rgba(7, 9, 13, 0.34));
+}
+
+.commerce-project__surface:focus-visible {
+  outline: 3px solid var(--project-accent);
+  outline-offset: -5px;
+}
+
+.commerce-project__surface img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  filter: saturate(0.9) contrast(1.03) brightness(0.9);
+  transform: scale(1.01);
+  transition: filter 650ms ease, transform 750ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.commerce-project:hover .commerce-project__surface img,
+.commerce-project:focus-within .commerce-project__surface img {
+  filter: saturate(1.02) contrast(1.04) brightness(0.96);
+  transform: scale(1.045);
+}
+
+.commerce-project__meta {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 1.5vw, 1.35rem);
+}
+
+.commerce-project__status {
+  justify-self: start;
+  padding: 0.38rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--project-accent) 40%, rgba(255, 255, 255, 0.1));
+  border-radius: 999px;
+  color: var(--project-accent);
+  background: color-mix(in srgb, var(--project-accent) 7%, transparent);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.commerce-project__title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+.commerce-project__title-row h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(1.65rem, 2.5vw, 2.75rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+}
+
+.commerce-project__title-row p {
+  margin: 0.42rem 0 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.commerce-project__discover {
+  display: grid;
+  width: 2.75rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #06100d;
+  background: var(--project-accent);
+  cursor: pointer;
+  transition: transform 180ms ease;
+}
+
+.commerce-project__discover:hover,
+.commerce-project__discover:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--project-accent) 28%, transparent);
+  outline-offset: 3px;
+  transform: translateX(2px);
+}
+
+.commerce-project__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.commerce-project__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.commerce-project__tags span {
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 0.66rem;
+}
+
+.commerce-project__tags span + span::before {
+  content: "·";
+  margin-right: 0.35rem;
+  color: var(--project-accent);
+}
+
+.commerce-project__footer a {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(255, 255, 255, 0.76);
+  text-decoration: none;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.commerce-project__footer a:hover,
+.commerce-project__footer a:focus-visible {
+  color: var(--project-accent);
+  outline: none;
+}
+
+@keyframes commerce-ambient-drift {
+  from { transform: translate3d(-1.5%, 1%, 0) scale(1); }
+  to { transform: translate3d(1.5%, -1%, 0) scale(1.06); }
+}
+
+@media (max-width: 1120px) {
+  .commerce-showcase { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .commerce-project:first-child {
+    grid-column: 1 / -1;
+    width: min(760px, 100%);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .commerce-experience { height: auto; min-height: 100svh; }
+
+  .commerce-experience__content {
+    width: min(100% - 1.25rem, 520px);
+    padding: 7.5rem 0 3rem;
+  }
+
+  .commerce-experience__header {
+    display: block;
+    margin-bottom: 2.2rem;
+  }
+
+  .commerce-experience__header h1 {
+    margin-top: 0.45rem;
+    font-size: clamp(3.6rem, 19vw, 5.3rem);
+    line-height: 0.82;
+  }
+
+  .commerce-experience__header > p {
+    max-width: 31rem;
+    margin-top: 1.25rem;
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .commerce-showcase {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .commerce-project,
+  .commerce-project:first-child {
+    grid-column: auto;
+    width: 100%;
+  }
+
+  .commerce-project:hover,
+  .commerce-project:focus-within { transform: none; }
+
+  .commerce-project__meta { gap: 0.85rem; padding: 1rem; }
+  .commerce-project__title-row h2 { font-size: 2rem; }
+  .commerce-project__title-row p { font-size: 0.78rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .commerce-experience__ambient,
+  .commerce-project,
+  .commerce-project__surface img { animation: none; transition: none; }
+}

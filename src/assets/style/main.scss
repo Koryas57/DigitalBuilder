@@ -509,6 +509,25 @@ img {
   padding: clamp(4.5rem, 10vw, 8rem) 0;
 }
 
+.projects-page {
+  padding-top: clamp(7.5rem, 12vw, 10rem);
+
+  .section-heading {
+    max-width: 920px;
+  }
+
+  .section-heading h1 {
+    max-width: 11ch;
+    font-size: clamp(3.4rem, 9vw, 7rem);
+    text-wrap: balance;
+  }
+
+  .section-heading p:not(.eyebrow) {
+    max-width: 38rem;
+    margin-top: 1.2rem;
+  }
+}
+
 .skills-matrix {
   display: grid;
   gap: 0.7rem;
@@ -584,6 +603,28 @@ img {
   .narrative-grid,
   .skills-matrix {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 759px) {
+  .projects-page {
+    padding-top: 6.7rem;
+    padding-bottom: 3.5rem;
+
+    .section-heading {
+      margin-bottom: 2rem;
+    }
+
+    .section-heading h1 {
+      max-width: 9ch;
+      font-size: clamp(3rem, 15vw, 4.4rem);
+      line-height: 0.9;
+    }
+
+    .section-heading p:not(.eyebrow) {
+      margin-top: 1rem;
+      font-size: 0.94rem;
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-export const heroBadges = ["React", "TypeScript", "Produit", "E-commerce", "Automatisation", "UI"];
+export const heroBadges = ["React", "TypeScript", "Produit", "Sites Web", "Automatisation", "UI"];
 
 export const processSteps = [
   {
@@ -30,7 +30,7 @@ export const processSteps = [
 export const hybridPillars = [
   "Développement web",
   "Gestion de projet",
-  "E-commerce",
+  "Commerce numérique",
   "Analyse de données",
   "Automatisation",
   "Culture produit",
@@ -52,7 +52,7 @@ export const capabilityGroups = [
   },
   {
     title: "Business",
-    items: ["E-commerce", "Sourcing", "Négociation", "Analyse de marge", "Marketplaces"],
+    items: ["Commerce numérique", "Sourcing", "Négociation", "Analyse de marge", "Marketplaces"],
   },
   {
     title: "Automatisation",

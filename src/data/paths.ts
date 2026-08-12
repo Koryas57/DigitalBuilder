@@ -1,7 +1,7 @@
 export type PathId =
   | "developpeur"
   | "chef-de-projet"
-  | "e-commerce"
+  | "sites-web-commerces"
   | "univers-personnel";
 
 export type PathAccent = "kynam" | "violet" | "gold" | "cyan";
@@ -30,11 +30,11 @@ export const experiencePaths: ExperiencePath[] = [
     status: "soon",
   },
   {
-    id: "e-commerce",
-    title: "Parcours E-commerce",
-    label: "Business, sourcing et optimisation",
+    id: "sites-web-commerces",
+    title: "Sites Web",
+    label: "Sites premium, vitrines et expériences digitales",
     accent: "gold",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "univers-personnel",
@@ -45,5 +45,9 @@ export const experiencePaths: ExperiencePath[] = [
   },
 ];
 
-export const getExperiencePath = (pathId: string) =>
-  experiencePaths.find((path) => path.id === pathId);
+export const getExperiencePath = (pathId: string) => {
+  const compatiblePathId =
+    pathId === "e-commerce" ? "sites-web-commerces" : pathId;
+
+  return experiencePaths.find((path) => path.id === compatiblePathId);
+};

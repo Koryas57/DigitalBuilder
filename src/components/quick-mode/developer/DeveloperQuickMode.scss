@@ -1057,15 +1057,22 @@
 
 .quick-projects article {
   display: grid;
-  grid-template-columns: 54px 1fr;
-  gap: 0.75rem;
-  align-items: center;
+  grid-template-columns: 82px 1fr;
+  gap: 0.85rem;
+  align-items: stretch;
+  padding-bottom: 0.72rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.quick-projects article:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .quick-projects img,
 .quick-projects article > span {
-  width: 54px;
-  height: 44px;
+  width: 82px;
+  height: 64px;
   border: 1px solid rgba(133, 222, 202, 0.2);
   border-radius: 10px;
   object-fit: cover;
@@ -1078,6 +1085,17 @@
   margin: 0;
 }
 
+.quick-projects__copy > span {
+  display: block;
+  margin-bottom: 0.18rem;
+  color: var(--quick-green);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
 .quick-projects p {
   display: -webkit-box;
   margin-top: 0.18rem;
@@ -1087,6 +1105,39 @@
   line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.quick-projects__actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.42rem;
+}
+
+.quick-projects__actions button,
+.quick-projects__actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 28px;
+  padding: 0.32rem 0.48rem;
+  border: 1px solid rgba(137, 255, 154, 0.22);
+  border-radius: 999px;
+  color: rgba(244, 242, 237, 0.84);
+  background: rgba(137, 255, 154, 0.06);
+  text-decoration: none;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.quick-projects__actions button:hover,
+.quick-projects__actions button:focus-visible,
+.quick-projects__actions a:hover,
+.quick-projects__actions a:focus-visible {
+  color: #04100d;
+  background: var(--quick-green);
+  outline: none;
 }
 
 .quick-projects__link {
@@ -1178,6 +1229,8 @@
   }
 
   .quick-dev__content {
+    display: flex;
+    flex-direction: column;
     width: min(100%, 560px);
     padding-inline: 0.72rem;
     padding-top: 0;
@@ -1283,14 +1336,15 @@
   .quick-hero {
     position: relative;
     display: block;
-    padding: 2.1rem 0 1.2rem;
+    order: 1;
+    padding: 1.8rem 0 1.1rem;
   }
 
   .quick-hero::before {
     content: "";
     position: absolute;
     inset: 0 -0.68rem auto;
-    height: 360px;
+    height: 100%;
     border-radius: 0 0 34px 34px;
     background:
       linear-gradient(90deg, rgba(3, 6, 9, 0.98) 0%, rgba(3, 6, 9, 0.7) 46%, transparent 100%),
@@ -1309,9 +1363,15 @@
   }
 
   .quick-hero__title {
-    font-size: clamp(2.75rem, 11.8vw, 4.65rem);
-    line-height: 0.93;
-    letter-spacing: -0.045em;
+    max-width: 100%;
+    font-size: clamp(3rem, 14.2vw, 4.75rem);
+    line-height: 0.84;
+    letter-spacing: -0.055em;
+  }
+
+  .quick-hero__title span {
+    white-space: normal;
+    text-wrap: balance;
   }
 
   .quick-hero__title--desktop {
@@ -1324,27 +1384,33 @@
 
   .quick-hero__subtitle {
     max-width: 34rem;
-    margin-top: 1.2rem;
-    font-size: 1rem;
+    margin-top: 1.25rem;
+    font-size: 0.94rem;
+    line-height: 1.55;
   }
 
   .quick-actions {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.78rem;
+    margin-top: 1.35rem;
   }
 
   .quick-actions a,
   .quick-actions button {
-    min-height: 56px;
+    min-width: 0;
+    min-height: 52px;
+    padding: 0 0.8rem;
     border-radius: 16px;
+    font-size: 0.84rem;
+  }
+
+  .quick-actions__primary {
+    grid-column: 1 / -1;
   }
 
   .quick-hero-visual {
-    display: block;
-    min-height: clamp(360px, 92vw, 500px);
-    margin-top: 1.15rem;
-    border-radius: 22px;
+    display: none;
   }
 
   .quick-hero-visual__metrics,
@@ -1468,6 +1534,11 @@
     scrollbar-width: none;
   }
 
+  .quick-overview {
+    order: 3;
+    margin-top: 1rem;
+  }
+
   .quick-tags::-webkit-scrollbar {
     display: none;
   }
@@ -1492,7 +1563,34 @@
   }
 
   .quick-grid {
-    grid-template-columns: 1fr;
+    display: contents;
+  }
+
+  #quick-projects {
+    order: 2;
+    scroll-margin-top: 5.5rem;
+  }
+
+  .quick-card--expertise,
+  .quick-card--capabilities,
+  .quick-card--impact {
+    order: 4;
+    margin-top: 1rem;
+  }
+
+  #quick-stack {
+    order: 5;
+    margin-top: 1rem;
+    scroll-margin-top: 5.5rem;
+  }
+
+  .quick-card--projects {
+    height: auto;
+    margin-top: 0.4rem;
+  }
+
+  .quick-card--projects .quick-projects article:nth-child(n + 3) {
+    display: none;
   }
 
   .quick-card {
@@ -1505,11 +1603,13 @@
     grid-template-columns: 1fr;
     gap: 1rem;
     margin-top: 1rem;
+    order: 6;
   }
 
   .quick-benefits {
     grid-template-columns: 1fr;
     margin-top: 1rem;
+    order: 7;
   }
 
   .quick-benefits article {

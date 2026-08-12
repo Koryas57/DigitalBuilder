@@ -19,23 +19,23 @@ export const ExperienceNav: React.FC<ExperienceNavProps> = ({
     <header className="experience-nav">
       <button type="button" onClick={onReplayIntro}>
         <FiRotateCcw aria-hidden="true" />
-        Retour intro
+        <span className="experience-nav__text">Retour intro</span>
       </button>
       <button type="button" onClick={onBackToPaths}>
         <FiCompass aria-hidden="true" />
-        Choix de parcours
+        <span className="experience-nav__text">Choix de parcours</span>
       </button>
       {onQuickMode && (
         <button type="button" onClick={onQuickMode}>
           <FiZap aria-hidden="true" />
-          Mode rapide
+          <span className="experience-nav__text">Mode rapide</span>
         </button>
       )}
       <a href={contactLinks.email}>
         <FiMail aria-hidden="true" />
-        Contact
+        <span className="experience-nav__text">Contact</span>
       </a>
-      <span>{currentLabel}</span>
+      <span className="experience-nav__label">{currentLabel}</span>
     </header>
   );
 };

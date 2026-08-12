@@ -1,15 +1,13 @@
 import { developerStations } from "./developerPath";
-import { featuredProjects, projects } from "./projects";
-
-const visibleProjects = featuredProjects.slice(0, 3);
+import { developerWebProjects, featuredProjects, projects } from "./projects";
 
 export const developerQuickModeData = {
   hero: {
     eyebrow: "Mode rapide",
     title: ["Ingenieur", "Produit &", "Experiences web"],
-    mobileTitle: ["Ingenieur", "Logiciel · Produit ·", "Experiences 3D"],
+    mobileTitle: ["Bâtisseur", "digital"],
     subtitle:
-      "Je conçois et développe des produits numériques complets, des interfaces premium et des expériences 3D interactives. De l'idée au lancement, j'allie code, design et stratégie produit pour créer des solutions utiles, performantes et mémorables.",
+      "Je conçois des produits numériques complets, des interfaces premium et des expériences interactives. Code, design et stratégie produit réunis pour créer des solutions utiles, performantes et mémorables.",
     heroImage: "/assets/quick-mode/developer-hero-background.png",
   },
   techTags: [
@@ -75,13 +73,7 @@ export const developerQuickModeData = {
     statement:
       "Une approche qui relie architecture, expérience utilisateur et impact produit.",
   },
-  featuredProjects: visibleProjects.map((project) => ({
-    id: project.id,
-    name: project.projectName,
-    summary: project.summary,
-    imageSrc: project.imageSrc,
-    accent: project.accent,
-  })),
+  featuredProjects: developerWebProjects,
   stack: [
     "React",
     "TypeScript",
