@@ -26,4 +26,4 @@ export const SECOND_CALL_SUBTITLES: SubtitleCue[] = [
     end: 18.0,
     text: "???",
   },
-];
+]; 
