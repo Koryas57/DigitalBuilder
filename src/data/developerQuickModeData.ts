@@ -4,7 +4,7 @@ import { developerWebProjects, featuredProjects, projects } from "./projects";
 export const developerQuickModeData = {
   hero: {
     eyebrow: "Mode rapide",
-    title: ["Ingenieur", "Produit &", "Experiences web"],
+    title: ["Bâtisseur", "digital"],
     mobileTitle: ["Bâtisseur", "digital"],
     subtitle:
       "Je conçois des produits numériques complets, des interfaces premium et des expériences interactives. Code, design et stratégie produit réunis pour créer des solutions utiles, performantes et mémorables.",

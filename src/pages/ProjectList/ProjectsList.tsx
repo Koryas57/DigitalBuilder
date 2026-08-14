@@ -12,7 +12,7 @@ export const ProjectsList: React.FC = () => {
   return (
     <main className="site-shell">
       <ExperienceNav
-        currentLabel="Projets"
+        currentLabel="Parcours Projets"
         onBackToPaths={() => navigate("/")}
         onReplayIntro={() => navigate("/?intro=1")}
       />

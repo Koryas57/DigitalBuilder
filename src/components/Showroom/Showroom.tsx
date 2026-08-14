@@ -98,11 +98,7 @@ export const Showroom: React.FC<ModelViewerModalProps> = ({
     camera.add(listener);
     const audioLoader = new THREE.AudioLoader();
 
-    let engineIdle: THREE.Audio;
-    let engineAccel: THREE.Audio;
-    let ambientSound: THREE.Audio;
-
-    engineIdle = new THREE.Audio(listener);
+    const engineIdle = new THREE.Audio(listener);
     audioLoader.load("/assets/audio/IdlingCarSoundEffect.mp3", (buffer) => {
       if (!isModalOpen || disposed) return;
       engineIdle.setBuffer(buffer);
@@ -111,7 +107,7 @@ export const Showroom: React.FC<ModelViewerModalProps> = ({
       engineIdle.play();
     });
 
-    engineAccel = new THREE.Audio(listener);
+    const engineAccel = new THREE.Audio(listener);
     audioLoader.load("/assets/audio/JagSound.mp4", (buffer) => {
       if (!isModalOpen || disposed) return;
       engineAccel.setBuffer(buffer);
@@ -119,7 +115,7 @@ export const Showroom: React.FC<ModelViewerModalProps> = ({
       engineAccel.setVolume(0.6);
     });
 
-    ambientSound = new THREE.Audio(listener);
+    const ambientSound = new THREE.Audio(listener);
     audioLoader.load("/assets/audio/CitySoundEffect.mp3", (buffer) => {
       if (!isModalOpen || disposed) return;
       ambientSound.setBuffer(buffer);
@@ -226,9 +222,9 @@ export const Showroom: React.FC<ModelViewerModalProps> = ({
       window.removeEventListener("keyup", keyUpHandler);
       container.remove();
 
-      engineIdle?.isPlaying && engineIdle.stop();
-      engineAccel?.isPlaying && engineAccel.stop();
-      ambientSound?.isPlaying && ambientSound.stop();
+      if (engineIdle.isPlaying) engineIdle.stop();
+      if (engineAccel.isPlaying) engineAccel.stop();
+      if (ambientSound.isPlaying) ambientSound.stop();
     };
   }, [isOpen, onClose]);
 

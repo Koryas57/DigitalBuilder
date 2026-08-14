@@ -18,7 +18,7 @@ export const PathPlaceholder: React.FC<PathPlaceholderProps> = ({
     <section className={`path-placeholder path-placeholder--${path.accent}`}>
       <div className="experience-ambient" aria-hidden="true" />
       <ExperienceNav
-        currentLabel={path.title}
+        currentLabel={`Parcours ${path.title}`}
         onBackToPaths={onBackToPaths}
         onReplayIntro={onReplayIntro}
       />
