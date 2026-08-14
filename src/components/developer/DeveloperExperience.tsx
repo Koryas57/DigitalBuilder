@@ -6,6 +6,15 @@ import "./DeveloperExperience.scss";
 
 type DeveloperMode = "selector" | "immersive" | "quick";
 
+const getInitialDeveloperMode = (): DeveloperMode => {
+  if (typeof window === "undefined") return "selector";
+
+  const requestedMode = new URLSearchParams(window.location.search).get("mode");
+  if (requestedMode === "immersive") return "immersive";
+  if (requestedMode === "quick") return "quick";
+  return "selector";
+};
+
 interface DeveloperExperienceProps {
   onBackToPaths: () => void;
   onReplayIntro: () => void;
@@ -21,7 +30,7 @@ export const DeveloperExperience: React.FC<DeveloperExperienceProps> = ({
   onBackToPaths,
   onReplayIntro,
 }) => {
-  const [mode, setMode] = useState<DeveloperMode>("selector");
+  const [mode, setMode] = useState<DeveloperMode>(getInitialDeveloperMode);
 
   useLayoutEffect(() => {
     resetDocumentScroll();

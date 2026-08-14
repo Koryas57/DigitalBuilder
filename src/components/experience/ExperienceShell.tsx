@@ -54,7 +54,9 @@ const CommerceExperience = React.lazy(() =>
 export const ExperienceShell: React.FC = () => {
   const [initialExperience] = useState(getInitialExperience);
   const { isIntroVisible, completeIntro } = useIntroState();
-  const [showIntro, setShowIntro] = useState(isIntroVisible);
+  const [showIntro, setShowIntro] = useState(
+    isIntroVisible && initialExperience.view === "pathSelection"
+  );
   const [view, setView] = useState<ExperienceView>(initialExperience.view);
   const [selectedPathId, setSelectedPathId] = useState<PathId | null>(
     initialExperience.selectedPathId

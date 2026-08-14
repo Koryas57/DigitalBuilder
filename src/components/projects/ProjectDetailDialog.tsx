@@ -25,6 +25,11 @@ export const ProjectDetailDialog: React.FC<ProjectDetailDialogProps> = ({
   const titleId = React.useId();
   const panelRef = React.useRef<HTMLDivElement>(null);
   const closeButtonRef = React.useRef<HTMLButtonElement>(null);
+  const [videoFailed, setVideoFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    setVideoFailed(false);
+  }, [project?.id]);
 
   React.useEffect(() => {
     if (!project) return undefined;
@@ -97,11 +102,27 @@ export const ProjectDetailDialog: React.FC<ProjectDetailDialogProps> = ({
         </button>
 
         <div className="project-detail__hero">
-          {project.imageSrc && (
+          {project.videoSrc && !videoFailed ? (
+            <video
+              src={project.videoSrc}
+              poster={project.imageSrc}
+              muted
+              loop
+              playsInline
+              autoPlay
+              preload="metadata"
+              aria-hidden="true"
+              onError={() => setVideoFailed(true)}
+            />
+          ) : project.showImageVisual && project.imageSrc ? (
             <img
               src={project.imageSrc}
               alt={`Page d’accueil du projet ${project.projectName}`}
             />
+          ) : (
+            <div className="project-detail__visual-pending">
+              <span>Visuel à venir</span>
+            </div>
           )}
         </div>
 

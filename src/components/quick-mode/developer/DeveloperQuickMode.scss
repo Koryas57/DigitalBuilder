@@ -1070,13 +1070,28 @@
 }
 
 .quick-projects img,
+.quick-projects video,
 .quick-projects article > span {
+  display: block;
   width: 82px;
   height: 64px;
   border: 1px solid rgba(133, 222, 202, 0.2);
   border-radius: 10px;
   object-fit: cover;
   background: linear-gradient(135deg, rgba(137, 255, 154, 0.22), rgba(161, 121, 255, 0.2));
+}
+
+.quick-projects .quick-projects__visual-pending {
+  display: grid;
+  place-items: center;
+  padding: 0.3rem;
+  color: rgba(244, 242, 237, 0.72);
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .quick-projects strong,

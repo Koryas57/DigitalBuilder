@@ -11,21 +11,33 @@ interface ProjectCardProps {
 
 export const ProjectCard: React.FC<ProjectCardProps> = ({ project, priority = false }) => {
   const [detailOpen, setDetailOpen] = React.useState(false);
-  const monogram = project.projectName
-    .split(" ")
-    .map((word) => word[0])
-    .join("")
-    .slice(0, 3);
+  const [videoFailed, setVideoFailed] = React.useState(false);
 
   return (
     <>
       <article className={`project-card project-card--${project.accent} ${priority ? "project-card--priority" : ""}`}>
         <div className="project-card__poster">
-          {project.imageSrc ? (
-            <img src={project.imageSrc} alt={`Aperçu du projet ${project.projectName}`} />
+          {project.videoSrc && !videoFailed ? (
+            <video
+              src={project.videoSrc}
+              poster={project.imageSrc}
+              muted
+              loop
+              playsInline
+              autoPlay
+              preload={priority ? "auto" : "metadata"}
+              aria-hidden="true"
+              onError={() => setVideoFailed(true)}
+            />
+          ) : project.showImageVisual && project.imageSrc ? (
+            <img
+              src={project.imageSrc}
+              alt={`Aperçu du projet ${project.projectName}`}
+              loading={priority ? "eager" : "lazy"}
+            />
           ) : (
-            <div className="project-card__artifact">
-              <span>{monogram}</span>
+            <div className="project-card__visual-pending">
+              <span>Visuel à venir</span>
               <i />
             </div>
           )}
@@ -52,7 +64,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, priority = fa
             {project.link && (
               <a href={project.link} target="_blank" rel="noopener noreferrer">
                 <FiArrowUpRight aria-hidden="true" />
-                Projet
+                {project.id === "mode-immersion" ? "Mode immersion" : "Projet"}
               </a>
             )}
             {project.repositoryUrl && (

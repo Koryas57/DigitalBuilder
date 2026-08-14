@@ -1,6 +1,6 @@
-import PortfolioImage from "../assets/images/YassShanghai.webp";
 import Kasa from "../assets/images/Kasa.webp";
 import Qwenta from "../assets/images/Qwenta.webp";
+import VitrineExpress from "../assets/images/VitrineExpress.png";
 
 export type ProjectCollection =
   | "dev"
@@ -31,6 +31,8 @@ export interface Project {
   demonstratedSkills: string[];
   status: ProjectStatus;
   imageSrc?: string;
+  showImageVisual?: boolean;
+  videoSrc?: string;
   link?: string;
   repositoryUrl?: string;
   caseStudyUrl?: string;
@@ -68,6 +70,7 @@ export const projects: Project[] = [
     demonstratedSkills: ["Direction artistique", "UI/UX", "Mobile-first", "Restaurant"],
     status: "Prototype commercial",
     imageSrc: "/assets/projects/le-quai-cover.webp",
+    videoSrc: "/videos/projects/lequai.mp4",
     link: "https://demo-resto-sigma.vercel.app/",
     featured: true,
     webOrder: 2,
@@ -101,6 +104,7 @@ export const projects: Project[] = [
     demonstratedSkills: ["Direction artistique", "UX/UI", "Next.js", "Business"],
     status: "Projet entrepreneurial actif",
     imageSrc: "/assets/projects/travel-tactik-cover.webp",
+    videoSrc: "/videos/projects/traveltactik.mp4",
     link: "https://www.travel-tactik.com/",
     repositoryUrl: "https://github.com/Koryas57/TravelTactik",
     featured: true,
@@ -134,6 +138,7 @@ export const projects: Project[] = [
     demonstratedSkills: ["UI/UX", "Catalogue", "Retail", "Front-end"],
     status: "Démonstration commerciale",
     imageSrc: "/assets/projects/cbd-relax-cover.webp",
+    videoSrc: "/videos/projects/cbdrelax.mp4",
     link: "https://cbd-relax.vercel.app/",
     featured: true,
     webOrder: 3,
@@ -154,31 +159,41 @@ export const projects: Project[] = [
     accent: "violet",
   },
   {
-    id: "site-web-pas-cher",
-    projectName: "Site Web Pas Cher",
-    category: "Service de création de sites",
+    id: "vitrine-express",
+    projectName: "Vitrine Express",
+    category: "Création de sites vitrines",
     categories: ["dev", "business"],
     summary:
-      "Une offre simple : des sites nets, rapides, crédibles, sans complexité inutile.",
-    role: "Offre · landing · conversion",
+      "Une offre claire pour concevoir rapidement des sites vitrines nets, crédibles et orientés conversion.",
+    role: "Produit · landing page · conversion",
     stack: ["React", "TypeScript", "SCSS"],
     demonstratedSkills: ["Marketing", "Clarté", "Vente"],
-    status: "Concept",
+    status: "En ligne",
+    imageSrc: VitrineExpress,
+    showImageVisual: true,
+    link: "https://vitrine-express-zeta.vercel.app/",
     featured: true,
     accent: "gold",
   },
   {
-    id: "portfolio-personnel",
-    projectName: "Portfolio personnel",
-    category: "Vitrine interactive",
+    id: "mode-immersion",
+    projectName: "Mode Immersion",
+    category: "Expérience 3D immersive",
     categories: ["dev"],
     summary:
-      "Un objet de marque personnel : court, sombre, précis, mémorable.",
-    role: "DA · UX · développement",
-    stack: ["React", "TypeScript", "Vite"],
-    demonstratedSkills: ["Branding", "Interface", "Storytelling"],
+      "Une expérience interactive jouable qui réunit conception 3D, gameplay, narration, ambiance sonore et intégration web.",
+    role: "Conception · Unity · développement 3D · sound design",
+    stack: ["Unity", "Audacity", "Three.js", "React", "WebGL"],
+    demonstratedSkills: [
+      "Unity",
+      "Gameplay",
+      "3D temps réel",
+      "Sound design",
+      "Narration interactive",
+      "Intégration web",
+    ],
     status: "En ligne",
-    imageSrc: PortfolioImage,
+    link: "/?path=developpeur&mode=immersive",
     featured: true,
     accent: "night",
   },

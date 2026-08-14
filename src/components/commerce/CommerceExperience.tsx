@@ -11,7 +11,6 @@ interface CommerceExperienceProps {
 }
 
 type ProjectPresentation = {
-  videoSrc: string;
   category: string;
   headline: string;
   previewLabel: string;
@@ -24,7 +23,6 @@ type ProjectPresentation = {
 
 const projectPresentations: Record<string, ProjectPresentation> = {
   "travel-tactik": {
-    videoSrc: "/videos/projects/traveltactik.mp4",
     category: "Services",
     headline: "Le monde vous attend.",
     previewLabel: "Voyage sur mesure",
@@ -36,7 +34,6 @@ const projectPresentations: Record<string, ProjectPresentation> = {
     useEditorialFallback: true,
   },
   "le-quai": {
-    videoSrc: "/videos/projects/lequai.mp4",
     category: "Restaurants",
     headline: "Une table. Une atmosphère. Une identité.",
     previewLabel: "Restaurant · bord de mer",
@@ -47,7 +44,6 @@ const projectPresentations: Record<string, ProjectPresentation> = {
     variant: "editorial",
   },
   "cbd-relax": {
-    videoSrc: "/videos/projects/cbdrelax.mp4",
     category: "Boutiques",
     headline: "La culture du bon.",
     previewLabel: "Retail · univers de marque",
@@ -110,7 +106,7 @@ const ProjectMedia: React.FC<ProjectMediaProps> = ({
 }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [videoFailed, setVideoFailed] = React.useState(false);
-  const canUseVideo = shouldLoad && !reducedMotion && !videoFailed;
+  const canUseVideo = shouldLoad && !reducedMotion && !videoFailed && Boolean(project.videoSrc);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -144,7 +140,7 @@ const ProjectMedia: React.FC<ProjectMediaProps> = ({
           }}
           onError={() => setVideoFailed(true)}
         >
-          <source src={presentation.videoSrc} type="video/mp4" />
+          <source src={project.videoSrc} type="video/mp4" />
         </video>
       )}
 

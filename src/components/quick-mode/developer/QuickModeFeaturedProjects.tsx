@@ -5,6 +5,38 @@ import type { Project } from "../../../data/projects";
 import { ProjectDetailDialog } from "../../projects/ProjectDetailDialog";
 import { QuickModeCard } from "./QuickModeCard";
 
+const QuickProjectThumbnail: React.FC<{ project: Project }> = ({ project }) => {
+  const [videoFailed, setVideoFailed] = React.useState(false);
+
+  if (project.videoSrc && !videoFailed) {
+    return (
+      <video
+        src={project.videoSrc}
+        poster={project.imageSrc}
+        muted
+        loop
+        playsInline
+        autoPlay
+        preload="metadata"
+        aria-hidden="true"
+        onError={() => setVideoFailed(true)}
+      />
+    );
+  }
+
+  if (project.showImageVisual && project.imageSrc) {
+    return (
+      <img
+        src={project.imageSrc}
+        alt={`Aperçu de ${project.projectName}`}
+        loading="lazy"
+      />
+    );
+  }
+
+  return <span className="quick-projects__visual-pending">Visuel à venir</span>;
+};
+
 export const QuickModeFeaturedProjects: React.FC = () => {
   const [selectedProject, setSelectedProject] = React.useState<Project | null>(
     null
@@ -20,15 +52,7 @@ export const QuickModeFeaturedProjects: React.FC = () => {
         <div className="quick-projects">
           {developerQuickModeData.featuredProjects.map((project) => (
             <article key={project.id}>
-              {project.imageSrc ? (
-                <img
-                  src={project.imageSrc}
-                  alt={`Aperçu de ${project.projectName}`}
-                  loading="lazy"
-                />
-              ) : (
-                <span aria-hidden="true" />
-              )}
+              <QuickProjectThumbnail project={project} />
               <div className="quick-projects__copy">
                 <span>{project.status}</span>
                 <strong>{project.projectName}</strong>
