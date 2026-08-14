@@ -1,6 +1,7 @@
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useLayoutEffect, useState } from "react";
 import { DeveloperModeSelector } from "./DeveloperModeSelector";
 import { DeveloperQuickView } from "./DeveloperQuickView";
+import { resetDocumentScroll } from "../../utils/scrollPosition";
 import "./DeveloperExperience.scss";
 
 type DeveloperMode = "selector" | "immersive" | "quick";
@@ -21,6 +22,10 @@ export const DeveloperExperience: React.FC<DeveloperExperienceProps> = ({
   onReplayIntro,
 }) => {
   const [mode, setMode] = useState<DeveloperMode>("selector");
+
+  useLayoutEffect(() => {
+    resetDocumentScroll();
+  }, [mode]);
 
   return (
     <section className={`developer-experience developer-experience--${mode}`}>

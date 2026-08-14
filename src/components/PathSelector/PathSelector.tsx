@@ -23,6 +23,13 @@ type PathCardStyle = React.CSSProperties & {
 
 type AudiencePath = (typeof audiencePaths)[number];
 
+interface LaunchFrame {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
 const iconMap = {
   code: FiCode,
   briefcase: FiBriefcase,
@@ -53,6 +60,7 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
+  const [launchFrame, setLaunchFrame] = useState<LaunchFrame | null>(null);
   const [departingIndex, setDepartingIndex] = useState<number | null>(null);
   const [transitionDirection, setTransitionDirection] = useState<"next" | "previous">("next");
   const activeIndexRef = useRef(0);
@@ -64,6 +72,7 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
   const revealTimerRef = useRef<number>();
   const revealEndTimerRef = useRef<number>();
   const launchTimerRef = useRef<number>();
+  const carouselRef = useRef<HTMLDivElement>(null);
   const activePath = audiencePaths[activeIndex];
 
   useEffect(() => {
@@ -184,6 +193,15 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
     if (isLaunching) return;
 
     pauseAutoRotation();
+    const carouselBounds = carouselRef.current?.getBoundingClientRect();
+    if (carouselBounds) {
+      setLaunchFrame({
+        top: carouselBounds.top,
+        left: carouselBounds.left,
+        width: carouselBounds.width,
+        height: carouselBounds.height,
+      });
+    }
     setIsLaunching(true);
 
     if (launchTimerRef.current) window.clearTimeout(launchTimerRef.current);
@@ -250,9 +268,23 @@ export const PathSelector: React.FC<PathSelectorProps> = ({ onSelectPath }) => {
       </div>
 
       <div
+        ref={carouselRef}
         className={`path-carousel path-carousel--${transitionDirection} ${isTransitioning ? "is-transitioning" : ""} ${
           isRevealing ? "is-revealing" : ""
         }`}
+        style={
+          isLaunching && launchFrame
+            ? {
+                position: "fixed",
+                top: launchFrame.top,
+                left: launchFrame.left,
+                width: launchFrame.width,
+                height: launchFrame.height,
+                margin: 0,
+                zIndex: 12,
+              }
+            : undefined
+        }
         aria-live="polite"
         onMouseEnter={pauseAutoRotation}
         onTouchStart={startTouchSwipe}

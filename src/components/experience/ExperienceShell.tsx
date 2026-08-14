@@ -1,9 +1,10 @@
-import React, { Suspense, useCallback, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { CinematicIntro } from "../CinematicIntro/CinematicIntro";
 import { PathSelector } from "../PathSelector/PathSelector";
 import { PathPlaceholder } from "./PathPlaceholder";
 import { getExperiencePath, type PathId } from "../../data/paths";
 import { useIntroState } from "../../hooks/useIntroState";
+import { resetDocumentScroll } from "../../utils/scrollPosition";
 import "./ExperienceShell.scss";
 
 type ExperienceView =
@@ -58,6 +59,10 @@ export const ExperienceShell: React.FC = () => {
   const [selectedPathId, setSelectedPathId] = useState<PathId | null>(
     initialExperience.selectedPathId
   );
+
+  useLayoutEffect(() => {
+    resetDocumentScroll();
+  }, [view]);
 
   const updatePathQuery = useCallback((pathId: PathId | null) => {
     const url = new URL(window.location.href);

@@ -16,7 +16,7 @@ export const DeveloperModeSelector: React.FC<DeveloperModeSelectorProps> = ({
     <div className="developer-mode">
       <button className="developer-mode__back" type="button" onClick={onBackToPaths}>
         <FiArrowLeft aria-hidden="true" />
-        Retour aux choix de parcours
+        Retour
       </button>
 
       <div className="developer-mode__grid">

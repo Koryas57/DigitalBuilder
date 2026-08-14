@@ -12,19 +12,20 @@ interface CommerceExperienceProps {
 
 type ProjectPresentation = {
   videoSrc: string;
+  category: string;
   headline: string;
   previewLabel: string;
   previewLine: string;
   description: string;
   tags: string[];
   variant: "featured" | "editorial" | "panoramic";
-  alignment: "left" | "center" | "neutral";
   useEditorialFallback?: boolean;
 };
 
 const projectPresentations: Record<string, ProjectPresentation> = {
   "travel-tactik": {
     videoSrc: "/videos/projects/traveltactik.mp4",
+    category: "Services",
     headline: "Le monde vous attend.",
     previewLabel: "Voyage sur mesure",
     previewLine: "Organisation de voyages pensée dans les moindres détails.",
@@ -32,11 +33,11 @@ const projectPresentations: Record<string, ProjectPresentation> = {
       "Direction artistique et développement d’un service de voyage sur mesure, construit autour d’une offre claire.",
     tags: ["Direction artistique", "UX/UI", "Next.js", "Business"],
     variant: "featured",
-    alignment: "left",
     useEditorialFallback: true,
   },
   "le-quai": {
     videoSrc: "/videos/projects/lequai.mp4",
+    category: "Restaurants",
     headline: "Une table. Une atmosphère. Une identité.",
     previewLabel: "Restaurant · bord de mer",
     previewLine: "Une expérience gastronomique à l’identité singulière.",
@@ -44,10 +45,10 @@ const projectPresentations: Record<string, ProjectPresentation> = {
       "Une identité gastronomique éditoriale pensée pour faire ressentir le lieu avant même la réservation.",
     tags: ["Direction artistique", "UI/UX", "Mobile-first", "Restaurant"],
     variant: "editorial",
-    alignment: "center",
   },
   "cbd-relax": {
     videoSrc: "/videos/projects/cbdrelax.mp4",
+    category: "Boutiques",
     headline: "La culture du bon.",
     previewLabel: "Retail · univers de marque",
     previewLine: "Catalogue, boutiques et conseils réunis dans une même expérience.",
@@ -55,7 +56,6 @@ const projectPresentations: Record<string, ProjectPresentation> = {
       "Une vitrine retail contemporaine qui relie catalogue, univers de marque et boutiques.",
     tags: ["UI/UX", "Catalogue", "Retail", "Front-end"],
     variant: "panoramic",
-    alignment: "neutral",
   },
 };
 
@@ -79,7 +79,6 @@ interface ProjectMediaProps {
   project: Project;
   presentation: ProjectPresentation;
   reducedMotion: boolean;
-  mobile: boolean;
 }
 
 const TravelTactikFallback: React.FC = () => (
@@ -108,11 +107,10 @@ const ProjectMedia: React.FC<ProjectMediaProps> = ({
   project,
   presentation,
   reducedMotion,
-  mobile,
 }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [videoFailed, setVideoFailed] = React.useState(false);
-  const canUseVideo = shouldLoad && !reducedMotion && !mobile && !videoFailed;
+  const canUseVideo = shouldLoad && !reducedMotion && !videoFailed;
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -169,13 +167,11 @@ const ProjectMedia: React.FC<ProjectMediaProps> = ({
 interface ProjectSequenceProps {
   project: Project;
   reducedMotion: boolean;
-  mobile: boolean;
 }
 
 const ProjectSequence: React.FC<ProjectSequenceProps> = ({
   project,
   reducedMotion,
-  mobile,
 }) => {
   const sectionRef = React.useRef<HTMLElement>(null);
   const initialHash = typeof window !== "undefined" ? window.location.hash : "";
@@ -214,24 +210,23 @@ const ProjectSequence: React.FC<ProjectSequenceProps> = ({
       id={`project-${project.id}`}
       className={`commerce-project commerce-project--${presentation.variant}${
         revealed ? " is-revealed" : ""
-      } commerce-project--align-${presentation.alignment}`}
+      }`}
       aria-labelledby={`commerce-project-${project.id}`}
     >
+      <div className="commerce-project__category" aria-label={`Catégorie ${presentation.category}`}>
+        <span aria-hidden="true" />
+        <strong>{presentation.category}</strong>
+        <span aria-hidden="true" />
+      </div>
+
       {project.link && (
-        <a
-          className="commerce-project__media"
-          href={project.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Visiter le site ${project.projectName} (nouvel onglet)`}
-        >
+        <div className="commerce-project__media">
           <ProjectMedia
             active={active}
             shouldLoad={shouldLoad}
             project={project}
             presentation={presentation}
             reducedMotion={reducedMotion}
-            mobile={mobile}
           />
           <span className="commerce-project__shade" aria-hidden="true" />
           <div className="commerce-project__editorial">
@@ -239,27 +234,16 @@ const ProjectSequence: React.FC<ProjectSequenceProps> = ({
             <strong>{presentation.headline}</strong>
             <small>{presentation.previewLine}</small>
           </div>
-          <span className="commerce-project__media-label">
-            Explorer
-            <FiArrowUpRight aria-hidden="true" />
-          </span>
-        </a>
-      )}
-
-      <div className="commerce-project__info">
-        <div className="commerce-project__heading">
-          <span className="commerce-project__status">{project.status}</span>
-          <h2 id={`commerce-project-${project.id}`}>{project.projectName}</h2>
-          <p className="commerce-project__subtitle">{project.subtitle}.</p>
-        </div>
-        <div className="commerce-project__details">
-          <p className="commerce-project__description">{presentation.description}</p>
-          <div className="commerce-project__tags" aria-label="Compétences mobilisées">
-            {presentation.tags.map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
-          {project.link && (
+          <aside className="commerce-project__info">
+            <span className="commerce-project__status">{project.status}</span>
+            <h2 id={`commerce-project-${project.id}`}>{project.projectName}</h2>
+            <p className="commerce-project__subtitle">{project.subtitle}.</p>
+            <p className="commerce-project__description">{presentation.description}</p>
+            <div className="commerce-project__tags" aria-label="Compétences mobilisées">
+              {presentation.tags.map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
             <a
               className="commerce-project__text-link"
               href={project.link}
@@ -269,9 +253,9 @@ const ProjectSequence: React.FC<ProjectSequenceProps> = ({
               Voir le site
               <FiArrowUpRight aria-hidden="true" />
             </a>
-          )}
+          </aside>
         </div>
-      </div>
+      )}
     </article>
   );
 };
@@ -281,7 +265,6 @@ export const CommerceExperience: React.FC<CommerceExperienceProps> = ({
   onReplayIntro,
 }) => {
   const reducedMotion = useMediaPreference("(prefers-reduced-motion: reduce)");
-  const mobile = useMediaPreference("(max-width: 760px)");
 
   React.useEffect(() => {
     if (!window.location.hash) return;
@@ -312,7 +295,7 @@ export const CommerceExperience: React.FC<CommerceExperienceProps> = ({
           <h1>Sites Web</h1>
           <p>
             <strong>Identité, expérience et développement.</strong>
-            Une sélection de trois projets parmi les interfaces et expériences web que j’ai conçues.
+            Une sélection de projets parmi les interfaces et expériences web que j’ai conçues.
           </p>
           <a className="commerce-experience__scroll-cue" href="#web-projects">
             Découvrir la sélection
@@ -326,7 +309,6 @@ export const CommerceExperience: React.FC<CommerceExperienceProps> = ({
               <ProjectSequence
                 project={project}
                 reducedMotion={reducedMotion}
-                mobile={mobile}
               />
             </div>
           ))}

@@ -43,10 +43,9 @@
 
 .commerce-experience__hero {
   display: grid;
-  min-height: min(800px, 84svh);
+  min-height: min(500px, 84svh);
   grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
   grid-template-rows: auto auto auto;
-  gap: 0 clamp(3rem, 7vw, 9rem);
   align-content: center;
   align-items: end;
   padding-top: 8rem;
@@ -56,7 +55,6 @@
 .commerce-project__status,
 .commerce-project__tags,
 .commerce-project__editorial > small,
-.commerce-project__media-label,
 .commerce-contact > span {
   font-family: "Inter", system-ui, sans-serif;
   text-transform: uppercase;
@@ -146,7 +144,7 @@
 
 .commerce-showcase {
   display: grid;
-  gap: clamp(7.5rem, 13vw, 13rem);
+  gap: clamp(3.5rem, 8vw, 3.5rem);
   scroll-margin-top: 7rem;
 }
 
@@ -160,7 +158,7 @@
   --project-accent: var(--commerce-accent);
   position: relative;
   display: grid;
-  gap: clamp(1.5rem, 3vw, 2.5rem);
+  gap: clamp(3rem, 6vw, 5rem);
   opacity: 0;
   transform: translateY(28px);
   scroll-margin-top: 7rem;
@@ -176,9 +174,35 @@
 .commerce-project--editorial,
 .commerce-project--panoramic { --project-accent: var(--commerce-accent); }
 
+.commerce-project__category {
+  display: grid;
+  grid-template-columns: minmax(2rem, 1fr) auto minmax(2rem, 1fr);
+  gap: clamp(0.8rem, 2vw, 1.5rem);
+  align-items: center;
+  width: min(920px, 82%);
+  margin: 0 auto;
+  color: var(--commerce-accent);
+}
+
+.commerce-project__category > span {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--commerce-accent) 38%, transparent));
+}
+
+.commerce-project__category > span:last-child {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--commerce-accent) 38%, transparent), transparent);
+}
+
+.commerce-project__category strong {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
 .commerce-project__media {
   position: relative;
-  grid-row: 1;
   display: block;
   width: 100%;
   min-height: min(760px, 76svh);
@@ -245,7 +269,7 @@
   bottom: clamp(1.5rem, 4vw, 3.8rem);
   z-index: 5;
   display: grid;
-  max-width: min(720px, 70%);
+  max-width: min(680px, calc(100% - 470px));
   color: #fff;
 }
 
@@ -287,20 +311,23 @@
 }
 
 .commerce-project__info {
+  position: absolute;
+  right: clamp(1.4rem, 3vw, 3rem);
+  bottom: clamp(1.4rem, 3vw, 3rem);
+  z-index: 6;
   display: grid;
-  width: min(920px, calc(100% - 2rem));
-  gap: var(--commerce-space-4);
-  padding-top: var(--commerce-space-1);
+  width: min(370px, calc(100% - 3rem));
+  gap: var(--commerce-space-2);
+  padding: clamp(1.25rem, 2vw, 1.7rem);
+  border: 1px solid color-mix(in srgb, var(--commerce-accent) 24%, rgba(255, 255, 255, 0.08));
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(11, 13, 14, 0.88), rgba(4, 6, 8, 0.76)),
+    color-mix(in srgb, var(--commerce-accent) 4%, transparent);
+  box-shadow: 0 22px 65px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  backdrop-filter: blur(18px) saturate(1.1);
 }
-
-.commerce-project__heading,
-.commerce-project__details {
-  display: grid;
-  justify-items: start;
-}
-
-.commerce-project__heading { gap: var(--commerce-space-2); }
-.commerce-project__details { gap: var(--commerce-space-3); }
 
 .commerce-project__status {
   color: var(--commerce-accent);
@@ -311,9 +338,9 @@
 .commerce-project__info h2 {
   margin: 0;
   color: var(--commerce-ivory);
-  font-size: clamp(2.8rem, 5.5vw, 5.8rem);
-  line-height: 0.92;
-  letter-spacing: -0.052em;
+  font-size: clamp(2rem, 2.8vw, 2.75rem);
+  line-height: 0.94;
+  letter-spacing: -0.045em;
 }
 
 .commerce-project__subtitle,
@@ -321,14 +348,14 @@
 
 .commerce-project__subtitle {
   color: rgba(245, 241, 232, 0.72);
-  font-size: clamp(0.84rem, 1vw, 0.98rem);
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .commerce-project__description {
-  max-width: 42rem;
   color: var(--commerce-muted);
-  font-size: clamp(0.84rem, 1vw, 0.96rem);
-  line-height: 1.62;
+  font-size: 0.74rem;
+  line-height: 1.52;
 }
 
 .commerce-project__tags {
@@ -338,12 +365,12 @@
 }
 
 .commerce-project__tags span {
-  padding: 0.38rem 0.58rem;
+  padding: 0.31rem 0.46rem;
   border: 1px solid color-mix(in srgb, var(--commerce-accent) 22%, rgba(255, 255, 255, 0.1));
   border-radius: 999px;
   color: rgba(245, 241, 232, 0.7);
   background: color-mix(in srgb, var(--commerce-accent) 5%, transparent);
-  font-size: 0.55rem;
+  font-size: 0.48rem;
   font-weight: 700;
 }
 
@@ -351,53 +378,15 @@
   display: inline-flex;
   align-items: center;
   gap: var(--commerce-space-1);
-  padding-bottom: 0.35rem;
+  justify-self: start;
+  margin-top: 0.15rem;
+  padding-bottom: 0.3rem;
   border-bottom: 1px solid color-mix(in srgb, var(--commerce-accent) 38%, transparent);
   color: var(--commerce-ivory);
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 750;
   text-decoration: none;
   transition: color 220ms ease;
-}
-
-.commerce-project--align-left .commerce-project__info,
-.commerce-project--align-neutral .commerce-project__info {
-  margin-right: auto;
-  margin-left: clamp(0.25rem, 1vw, 1rem);
-}
-
-.commerce-project--align-center .commerce-project__info {
-  width: min(780px, calc(100% - 2rem));
-  margin: 0 auto;
-  text-align: center;
-}
-
-.commerce-project--align-center .commerce-project__heading,
-.commerce-project--align-center .commerce-project__details {
-  justify-items: center;
-}
-
-.commerce-project--align-center .commerce-project__description {
-  max-width: 38rem;
-}
-
-.commerce-project--align-center .commerce-project__tags {
-  justify-content: center;
-}
-
-.commerce-project__media-label {
-  position: absolute;
-  right: clamp(1.3rem, 3vw, 3rem);
-  bottom: clamp(1.5rem, 3vw, 2.8rem);
-  z-index: 6;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.58rem;
-  font-weight: 800;
-  opacity: 0.75;
-  transition: opacity 260ms ease, transform 260ms ease;
 }
 
 .commerce-project__media:hover .commerce-project__poster,
@@ -410,12 +399,6 @@
 
 .commerce-project__media:hover .commerce-project__shade,
 .commerce-project__media:focus-visible .commerce-project__shade { opacity: 0.8; }
-
-.commerce-project__media:hover .commerce-project__media-label,
-.commerce-project__media:focus-visible .commerce-project__media-label {
-  opacity: 1;
-  transform: translateX(3px);
-}
 
 .commerce-travel-poster {
   position: absolute;
@@ -507,17 +490,36 @@
   align-items: flex-start;
   margin: clamp(3rem, 8vw, 8rem) auto 0;
   padding: clamp(5rem, 10vw, 9rem) 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.commerce-contact::before {
+.commerce-contact::after {
   content: "";
   position: absolute;
   top: -1px;
   left: 0;
-  width: min(180px, 30%);
-  height: 1px;
-  background: var(--commerce-accent);
+  width: 22%;
+  height: 2px;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, #fff7d5 48%, var(--commerce-accent) 58%, transparent);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--commerce-accent) 72%, transparent));
+  transform: translateX(-120%);
+  animation: commerce-divider-flash 8s ease-in-out infinite;
+}
+
+@keyframes commerce-divider-flash {
+  0%, 68% {
+    opacity: 0;
+    transform: translateX(-120%);
+  }
+  72% { opacity: 0.9; }
+  84% {
+    opacity: 0.75;
+    transform: translateX(455%);
+  }
+  88%, 100% {
+    opacity: 0;
+    transform: translateX(455%);
+  }
 }
 
 .commerce-contact > span {
@@ -537,6 +539,27 @@
 .commerce-contact a {
   padding: 0.7rem 0;
   border-bottom: 1px solid color-mix(in srgb, var(--commerce-accent) 38%, transparent);
+}
+
+@media (max-width: 1100px) {
+  .commerce-project__media {
+    min-height: min(850px, 86svh);
+  }
+
+  .commerce-project__editorial {
+    top: clamp(2rem, 4vw, 3.5rem);
+    right: clamp(2rem, 4vw, 3.5rem);
+    bottom: auto;
+    max-width: 75%;
+  }
+
+  .commerce-project__editorial > strong {
+    font-size: clamp(3rem, 7vw, 5.5rem);
+  }
+
+  .commerce-project__info {
+    width: min(350px, calc(100% - 3rem));
+  }
 }
 
 @media (max-width: 900px) {
@@ -571,9 +594,8 @@
 
   .commerce-experience__hero {
     display: flex;
-    min-height: 76svh;
+    min-height: 36svh;
     flex-direction: column;
-    justify-content: center;
     align-items: flex-start;
     padding-top: 6.5rem;
   }
@@ -592,13 +614,13 @@
   }
 
   .commerce-experience__scroll-cue { margin-top: 1.8rem; }
-  .commerce-showcase { gap: 7.5rem; }
+  .commerce-showcase { gap: 3.5rem; margin-top: 3rem; }
 
   .commerce-project { gap: 1.2rem; }
 
   .commerce-project__media {
-    min-height: 0;
-    aspect-ratio: 4 / 5;
+    min-height: 720px;
+    aspect-ratio: auto;
     border-radius: 14px;
   }
 
@@ -609,8 +631,9 @@
   }
 
   .commerce-project__editorial {
+    top: 1.15rem;
     right: 1.1rem;
-    bottom: 1.2rem;
+    bottom: auto;
     left: 1.1rem;
     max-width: none;
   }
@@ -622,13 +645,13 @@
 
   .commerce-project__editorial > strong {
     max-width: 10ch;
-    font-size: clamp(2.35rem, 11vw, 3.5rem);
+    font-size: clamp(2.2rem, 10.5vw, 3.25rem);
     line-height: 0.91;
   }
 
   .commerce-project__editorial > small {
     display: -webkit-box;
-    max-width: calc(100% - 4.8rem);
+    max-width: 30rem;
     margin-top: 0.7rem;
     overflow: hidden;
     font-size: 0.7rem;
@@ -638,32 +661,31 @@
   }
 
   .commerce-project__info {
-    width: calc(100% - 0.6rem);
-    gap: var(--commerce-space-3);
-    padding-top: 0.2rem;
+    right: 0.8rem;
+    bottom: 0.8rem;
+    left: 0.8rem;
+    width: auto;
+    gap: 0.62rem;
+    padding: 1rem;
+    border-radius: 14px;
   }
 
-  .commerce-project--align-left .commerce-project__info,
-  .commerce-project--align-neutral .commerce-project__info {
-    margin-left: 0.3rem;
-  }
-
-  .commerce-project--align-center .commerce-project__info {
-    width: calc(100% - 1rem);
-  }
-
-  .commerce-project__heading { gap: 0.62rem; }
-  .commerce-project__details { gap: 0.9rem; }
-
-  .commerce-project__status { font-size: 0.52rem; }
+  .commerce-project__status { font-size: 0.48rem; }
 
   .commerce-project__info h2 {
-    font-size: clamp(2.65rem, 13vw, 3.9rem);
+    font-size: clamp(1.9rem, 9vw, 2.55rem);
   }
 
   .commerce-project__subtitle,
   .commerce-project__description {
-    font-size: 0.79rem;
+    font-size: 0.7rem;
+  }
+
+  .commerce-project__description {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .commerce-project__tags { gap: 0.38rem; }
@@ -673,25 +695,17 @@
     font-size: 0.48rem;
   }
 
-  .commerce-project__media-label {
-    right: 1rem;
-    bottom: 1.15rem;
-    font-size: 0.5rem;
-  }
-
   .commerce-travel-poster__topline {
     top: 1rem;
     right: 1rem;
     left: 1rem;
   }
 
-  .commerce-travel-poster__topline span:last-child,
+  .commerce-travel-poster__topline,
   .commerce-travel-poster__destinations { display: none; }
 
   .commerce-travel-poster__offer {
-    top: 16%;
-    right: 1rem;
-    width: 88px;
+    display: none;
   }
 
   .commerce-travel-poster__offer strong { font-size: 1.8rem; }
@@ -715,11 +729,12 @@
   .commerce-project,
   .commerce-project__poster,
   .commerce-project__video,
-  .commerce-project__media-label,
   .commerce-experience__scroll-cue svg,
   .commerce-project__text-link svg,
   .commerce-contact a svg {
     animation: none;
     transition: none;
   }
+
+  .commerce-contact::after { animation: none; }
 }
