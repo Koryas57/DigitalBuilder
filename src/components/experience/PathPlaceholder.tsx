@@ -30,10 +30,7 @@ export const PathPlaceholder: React.FC<PathPlaceholderProps> = ({
         <p>{path.label}</p>
         <h1>{path.title}</h1>
         <strong>Parcours bientot disponible</strong>
-        <span>
-          Cet univers aura sa propre navigation, ses propres interactions et sa
-          propre logique. Il ne redirigera pas vers l'ancien site vitrine.
-        </span>
+        {path.placeholderDescription && <span>{path.placeholderDescription}</span>}
         <div className="path-placeholder__actions">
           <button type="button" onClick={onBackToPaths}>
             <FiArrowLeft aria-hidden="true" />

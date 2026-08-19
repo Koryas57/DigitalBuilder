@@ -10,6 +10,7 @@ export interface ExperiencePath {
   id: PathId;
   title: string;
   label: string;
+  placeholderDescription?: string;
   accent: PathAccent;
   status: "ready" | "soon";
 }
@@ -26,6 +27,8 @@ export const experiencePaths: ExperiencePath[] = [
     id: "chef-de-projet",
     title: "Parcours Chef de projet",
     label: "Vision produit, cadrage et execution",
+    placeholderDescription:
+      "Une immersion dans ma façon de cadrer une idée, structurer les priorités et piloter un projet jusqu’à sa réalisation.",
     accent: "violet",
     status: "soon",
   },
@@ -40,6 +43,8 @@ export const experiencePaths: ExperiencePath[] = [
     id: "univers-personnel",
     title: "Univers personnel",
     label: "Curiosites, inspirations et laboratoire creatif",
+    placeholderDescription:
+      "Un espace consacré à mes inspirations, mes expérimentations et aux projets personnels qui nourrissent ma créativité.",
     accent: "cyan",
     status: "soon",
   },

@@ -17,9 +17,42 @@ export const IntroTypography: React.FC = () => {
         <small>Bâtisseur digital</small>
       </section>
 
-      <section className="intro-scene intro-scene--statement" aria-label="Je construis des choses">
-        <h2>Je construis<br /><em>des choses.</em></h2>
-        <p>Sites. Applications. Jeux. Outils. Marques. Expériences.</p>
+      <section
+        className="intro-scene intro-scene--founder"
+        aria-label="Fondateur de Bien en ligne et Travel Tactik"
+      >
+        <div className="intro-founder">
+          <p className="intro-founder__eyebrow">Fondateur de</p>
+          <div className="intro-founder__brands">
+            <a
+              className="intro-founder__brand intro-founder__brand--bien-en-ligne"
+              href="https://bienenligne.fr/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Découvrir Bien en ligne dans un nouvel onglet"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <strong>Bien en ligne</strong>
+              <span>Sites web pour entreprises</span>
+            </a>
+
+            <i className="intro-founder__divider" aria-hidden="true" />
+
+            <a
+              className="intro-founder__brand intro-founder__brand--travel-tactik"
+              href="https://travel-tactik.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Découvrir Travel Tactik dans un nouvel onglet"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <strong>Travel Tactik</strong>
+              <span>Voyages pensés sur mesure</span>
+            </a>
+          </div>
+        </div>
       </section>
 
       <section className="intro-scene intro-scene--words" aria-label="Types de projets">
