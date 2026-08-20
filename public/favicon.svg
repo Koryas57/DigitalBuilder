@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Monogramme YN de Yacine Nezreg</title>
+  <rect width="64" height="64" rx="14" fill="#050608" />
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="none" stroke="#b7f8ca" stroke-opacity=".28" stroke-width="2" />
+  <path d="M9 16l11 14 11-14M20 30v18M36 48V16l19 32V16" fill="none" stroke="#fffaf0" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter" />
+  <path d="M9 54h46" stroke="#b7f8ca" stroke-width="2" />
+</svg>
