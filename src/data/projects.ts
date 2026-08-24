@@ -1,6 +1,5 @@
 import Kasa from "../assets/images/Kasa.webp";
 import Qwenta from "../assets/images/Qwenta.webp";
-import VitrineExpress from "../assets/images/VitrineExpress.png";
 
 export type ProjectCollection =
   | "dev"
@@ -147,31 +146,75 @@ export const projects: Project[] = [
   {
     id: "nagara",
     projectName: "Nagara",
-    category: "Jeu vidéo / expérience interactive",
+    subtitle: "Jeu vidéo animé dans un vaste monde explorable",
+    category: "Jeu vidéo · level design · monde interactif",
     categories: ["dev"],
     summary:
-      "Un monde jouable. Une direction artistique. Une logique d’expérience.",
-    role: "Game design · prototype · narration",
-    stack: ["Unreal Engine", "C++", "UI"],
-    demonstratedSkills: ["Imaginaire", "Système", "Immersion"],
+      "Un jeu conçu avec Godot dans un vaste monde entièrement cartographié avec Tiled, enrichi d’animations, d’interactions et d’une ambiance sonore travaillée.",
+    context:
+      "Projet d’apprentissage et de création à grande échelle sur lequel j’ai appris le GDScript, conçu mes propres maps et développé un univers vivant à partir d’assets particulièrement volumineux.",
+    objective:
+      "Construire un monde immense, cohérent et agréable à explorer tout en maîtrisant un nouveau moteur, un nouveau langage et les contraintes liées à de grandes cartes.",
+    solution:
+      "Les environnements ont été dessinés dans Tiled puis intégrés dans Godot. Les éléments du décor, du coffre à jouets aux voitures en passant par le réfrigérateur, ont été animés et accompagnés de sons pour donner vie au monde.",
+    features: [
+      "Maps réalisées sur mesure avec Tiled",
+      "Monde étendu et explorable",
+      "Décors et objets animés",
+      "Interactions sonorisées",
+      "Gestion d’assets volumineux",
+      "Développement des mécaniques en GDScript",
+    ],
+    role: "Game design · level design · développement GDScript · intégration audio",
+    stack: ["Godot", "GDScript", "Tiled", "Animation 2D", "Sound design"],
+    demonstratedSkills: [
+      "Level design",
+      "GDScript",
+      "Animation",
+      "Sound design",
+      "Gestion d’assets volumineux",
+      "World building",
+    ],
     status: "En construction",
+    videoSrc: "/videos/projects/NagaraEdit.mp4",
     featured: true,
     accent: "violet",
   },
   {
-    id: "vitrine-express",
-    projectName: "Vitrine Express",
-    category: "Création de sites vitrines",
+    id: "bien-en-ligne",
+    projectName: "Bien en ligne",
+    subtitle: "Sites web pour commerces et indépendants",
+    category: "Création de sites web · offre entrepreneuriale",
     categories: ["dev", "business"],
     summary:
-      "Une offre claire pour concevoir rapidement des sites vitrines nets, crédibles et orientés conversion.",
-    role: "Produit · landing page · conversion",
-    stack: ["React", "TypeScript", "SCSS"],
-    demonstratedSkills: ["Marketing", "Clarté", "Vente"],
+      "Une marque dédiée à la création rapide de sites professionnels, clairs et crédibles pour les commerces et les indépendants, avec une expérience intégralement disponible en français et en anglais.",
+    context:
+      "Bien en ligne est une marque complète construite autour d’une promesse simple : rendre un site professionnel accessible, rapide à mettre en ligne et facile à comprendre.",
+    objective:
+      "Permettre aux commerces et aux indépendants de présenter sérieusement leur activité en ligne grâce à une offre lisible, un tarif transparent et un parcours de demande direct.",
+    solution:
+      "Une identité de marque complète et une landing page responsive orientée conversion, structurée autour de l’offre à 300 €, du délai annoncé de trois jours et d’un parcours entièrement traduit en anglais.",
+    features: [
+      "Site intégralement bilingue français et anglais",
+      "Présentation claire de l’offre et du tarif",
+      "Parcours de conversion direct",
+      "Positionnement dédié aux commerces et indépendants",
+      "Interface responsive",
+      "Identité de marque cohérente",
+    ],
+    role: "Fondateur · produit · identité de marque · développement · conversion",
+    stack: ["React", "TypeScript", "SCSS", "Internationalisation", "Responsive design"],
+    demonstratedSkills: [
+      "Branding",
+      "Marketing",
+      "Conversion",
+      "Internationalisation",
+      "UI/UX",
+    ],
     status: "En ligne",
-    imageSrc: VitrineExpress,
+    imageSrc: "/assets/images/BELog.png",
     showImageVisual: true,
-    link: "https://vitrine-express-zeta.vercel.app/",
+    link: "https://bienenligne.fr/",
     featured: true,
     accent: "gold",
   },

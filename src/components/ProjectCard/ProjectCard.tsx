@@ -9,9 +9,39 @@ interface ProjectCardProps {
   priority?: boolean;
 }
 
+const normalizeProofLabel = (label: string) =>
+  label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("fr")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const getComplementaryProofs = (project: Project) => {
+  const existingLabels = [project.role, ...project.stack].map(normalizeProofLabel);
+  const selectedLabels = new Set<string>();
+
+  return project.demonstratedSkills
+    .filter((skill) => {
+      const normalizedSkill = normalizeProofLabel(skill);
+      if (!normalizedSkill || selectedLabels.has(normalizedSkill)) return false;
+
+      const isAlreadyCovered = existingLabels.some(
+        (label) =>
+          label.includes(normalizedSkill) || normalizedSkill.includes(label)
+      );
+
+      if (isAlreadyCovered) return false;
+      selectedLabels.add(normalizedSkill);
+      return true;
+    })
+    .slice(0, 2);
+};
+
 export const ProjectCard: React.FC<ProjectCardProps> = ({ project, priority = false }) => {
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [videoFailed, setVideoFailed] = React.useState(false);
+  const complementaryProofs = getComplementaryProofs(project);
 
   return (
     <>
@@ -50,8 +80,16 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, priority = fa
           <p className="project-card__summary">{project.summary}</p>
 
           <div className="project-card__proof">
-            <span>{project.role}</span>
-            <span>{project.demonstratedSkills.slice(0, 2).join(" · ")}</span>
+            <span>
+              <strong>Rôle</strong>
+              {project.role}
+            </span>
+            {complementaryProofs.length > 0 && (
+              <span>
+                <strong>Points forts</strong>
+                {complementaryProofs.join(" · ")}
+              </span>
+            )}
           </div>
 
           <div className="project-card__stack">
